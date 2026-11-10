@@ -1,0 +1,621 @@
+// LIFEOS database schema.
+//
+// Two families of tables:
+//  1. Account tables (User, Profile, Session, …) — classic server-owned rows.
+//  2. Synced tables — rows are created on devices (offline-first) and replicated through /api/sync.
+//     Every synced table has the composite primary key (userId, id): ids are client-generated UUIDs,
+//     and scoping the key by user makes cross-user access structurally impossible. Foreign keys
+//     between synced tables are composite as well, so a row can only reference rows of the same user.
+//     `seq` is the per-user change counter used as the pull cursor. Rows are soft-deleted
+//     (`deletedAt`) so deletions replicate; `extra` holds custom fields and module-specific data.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  /// scrypt hash of the one-time recovery code (password reset without e-mail)
+  recoveryHash String?
+  /// per-user monotonic change counter; every synced write takes the next value
+  syncSeq      BigInt   @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile           Profile?
+  sessions          Session[]
+  passwordResets    PasswordReset[]
+  workspaces        Workspace[]
+  userSettings      UserSetting[]
+  modulePreferences ModulePreference[]
+  projects          Project[]
+  goals             Goal[]
+  tasks             Task[]
+  events            Event[]
+  habits            Habit[]
+  habitLogs         HabitLog[]
+  notes             Note[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  studyRecords      StudyRecord[]
+  fitnessRecords    FitnessRecord[]
+  fileRecords       FileRecord[]
+  notifications     Notification[]
+  automations       Automation[]
+  templates         Template[]
+  activityLogs      ActivityLog[]
+  records           Record[]
+
+  @@map("users")
+}
+
+model Profile {
+  userId      String   @id
+  displayName String   @default("")
+  timezone    String   @default("Asia/Kolkata")
+  locale      String   @default("en-IN")
+  currency    String   @default("INR")
+  avatarColor String   @default("#22d3ee")
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  /// SHA-256 of the session token; the raw token only ever lives in the httpOnly cookie
+  tokenHash  String    @unique
+  deviceName String    @default("")
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+/// Fixed-window counters for rate limiting (works on serverless without Redis).
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@map("rate_limits")
+}
+
+/// Server-side mirror of the feature registry (seeded from src/core/registry by prisma/seed.ts).
+model Feature {
+  id           String   @id
+  moduleId     String
+  name         String
+  category     String
+  status       String
+  description  String   @default("")
+  dependencies String[] @default([])
+  updatedAt    DateTime @updatedAt
+
+  @@index([moduleId])
+  @@index([status])
+  @@map("features")
+}
+
+model Workspace {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  name        String    @default("")
+  color       String?
+  icon        String?
+  position    Float     @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("workspaces")
+}
+
+model UserSetting {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  value       Json      @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("user_settings")
+}
+
+model ModulePreference {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  moduleId    String
+  enabled     Boolean   @default(true)
+  favorite    Boolean   @default(false)
+  position    Float     @default(0)
+  lastUsedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, moduleId])
+  @@map("module_preferences")
+}
+
+model Project {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  name        String    @default("")
+  description String    @default("")
+  status      String    @default("active")
+  color       String?
+  startAt     DateTime?
+  dueAt       DateTime?
+  archived    Boolean   @default(false)
+  parentId    String?
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Project?  @relation("ProjectTree", fields: [userId, parentId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  projectTree  Project[] @relation("ProjectTree")
+  projectTasks Task[]    @relation("ProjectTasks")
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, status])
+  @@map("projects")
+}
+
+model Goal {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  title       String    @default("")
+  description String    @default("")
+  kind        String    @default("long")
+  status      String    @default("active")
+  progress    Float     @default(0)
+  targetDate  DateTime?
+  archived    Boolean   @default(false)
+  parentId    String?
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Goal?  @relation("GoalTree", fields: [userId, parentId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  goalTree  Goal[] @relation("GoalTree")
+  goalTasks Task[] @relation("GoalTasks")
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, status])
+  @@map("goals")
+}
+
+model Task {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  title       String    @default("")
+  notes       String    @default("")
+  status      String    @default("todo")
+  priority    Int       @default(0)
+  dueAt       DateTime?
+  startAt     DateTime?
+  completedAt DateTime?
+  tags        String[]  @default([])
+  dependsOn   String[]  @default([])
+  recurrence  Json?
+  position    Float     @default(0)
+  estimateMin Int?
+  archived    Boolean   @default(false)
+  projectId   String?
+  parentId    String?
+  goalId      String?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project? @relation("ProjectTasks", fields: [userId, projectId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  parent   Task?    @relation("TaskTree", fields: [userId, parentId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  goal     Goal?    @relation("GoalTasks", fields: [userId, goalId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  taskTree Task[]   @relation("TaskTree")
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, status])
+  @@index([userId, dueAt])
+  @@index([userId, projectId])
+  @@map("tasks")
+}
+
+model Event {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  title       String    @default("")
+  description String    @default("")
+  startAt     DateTime?
+  endAt       DateTime?
+  allDay      Boolean   @default(false)
+  calendarId  String?
+  location    String    @default("")
+  category    String?
+  timezone    String?
+  recurrence  Json?
+  reminders   Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, startAt])
+  @@map("events")
+}
+
+model Habit {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  name        String    @default("")
+  description String    @default("")
+  cadence     String    @default("daily")
+  target      Float     @default(1)
+  unit        String?
+  category    String?
+  color       String?
+  reminderAt  String?
+  archived    Boolean   @default(false)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitLogs HabitLog[] @relation("HabitLogs")
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("habits")
+}
+
+model HabitLog {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  habitId     String?
+  date        String    @default("")
+  value       Float     @default(1)
+  note        String    @default("")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit? @relation("HabitLogs", fields: [userId, habitId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, habitId, date])
+  @@map("habit_logs")
+}
+
+model Note {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  title       String    @default("")
+  content     String    @default("")
+  kind        String    @default("note")
+  notebookId  String?
+  tags        String[]  @default([])
+  pinned      Boolean   @default(false)
+  archived    Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, kind])
+  @@map("notes")
+}
+
+model Transaction {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  type        String    @default("expense")
+  amount      Decimal   @default(0) @db.Decimal(16, 2)
+  currency    String    @default("INR")
+  category    String?
+  accountId   String?
+  toAccountId String?
+  date        DateTime?
+  payee       String    @default("")
+  note        String    @default("")
+  tags        String[]  @default([])
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, date])
+  @@index([userId, category])
+  @@map("transactions")
+}
+
+model Budget {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  category    String    @default("")
+  period      String    @default("monthly")
+  amount      Decimal   @default(0) @db.Decimal(16, 2)
+  currency    String    @default("INR")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("budgets")
+}
+
+model StudyRecord {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  kind        String
+  title       String    @default("")
+  parentId    String?
+  status      String?
+  dueAt       DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, kind])
+  @@map("study_records")
+}
+
+model FitnessRecord {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  kind        String
+  title       String    @default("")
+  date        DateTime?
+  value       Float?
+  unit        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, kind, date])
+  @@map("fitness_records")
+}
+
+model FileRecord {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  name        String    @default("")
+  mime        String?
+  size        Int       @default(0)
+  category    String?
+  tags        String[]  @default([])
+  expiresAt   DateTime?
+  storage     String    @default("device")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("files")
+}
+
+model Notification {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  title       String    @default("")
+  body        String    @default("")
+  kind        String    @default("info")
+  source      String?
+  sourceId    String?
+  dueAt       DateTime?
+  readAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("notifications")
+}
+
+model Automation {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  name        String    @default("")
+  enabled     Boolean   @default(true)
+  trigger     Json      @default("{}")
+  conditions  Json      @default("[]")
+  actions     Json      @default("[]")
+  lastRunAt   DateTime?
+  runCount    Int       @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@map("automations")
+}
+
+model Template {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  kind        String    @default("")
+  name        String    @default("")
+  payload     Json      @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, kind])
+  @@map("templates")
+}
+
+model ActivityLog {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  action      String    @default("")
+  collection  String    @default("")
+  recordId    String?
+  summary     String    @default("")
+  at          DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, at])
+  @@map("activity_log")
+}
+
+model Record {
+  id          String
+  userId      String
+  workspaceId String?
+  seq         BigInt    @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  extra       Json      @default("{}")
+  /// long-tail and user-defined collections: one document table, payload in `extra`
+  collection  String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@index([userId, seq])
+  @@index([userId, collection])
+  @@map("records")
+}
