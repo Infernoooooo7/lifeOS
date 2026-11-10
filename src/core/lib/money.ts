@@ -62,7 +62,7 @@ export function totals(txns: Txn[], currency = 'INR', rates = DEFAULT_RATES): To
   return { income, expense, net: income - expense, savingsRate: income > 0 ? Math.max(0, (income - expense) / income) : 0 };
 }
 
-export const inMonth = (txns: Txn[], month: string): Txn[] => txns.filter((t) => (t.date ?? '').slice(0, 7) === month);
+export const inMonth = <T extends Txn>(txns: T[], month: string): T[] => txns.filter((t) => (t.date ?? '').slice(0, 7) === month);
 
 /** Spending per category, largest first. */
 export function byCategory(txns: Txn[], type: 'income' | 'expense' = 'expense', currency = 'INR', rates = DEFAULT_RATES): { category: string; amount: number; share: number }[] {
@@ -96,7 +96,7 @@ export interface BudgetStatus {
   state: 'ok' | 'warning' | 'over';
 }
 
-export function budgetStatus(budgets: { category?: string; amount?: number; currency?: string }[], monthTxns: Txn[], currency = 'INR', rates = DEFAULT_RATES): BudgetStatus[] {
+export function budgetStatus(budgets: { id?: string; category?: string; amount?: number; currency?: string }[], monthTxns: Txn[], currency = 'INR', rates = DEFAULT_RATES): BudgetStatus[] {
   const spent = new Map(byCategory(monthTxns, 'expense', currency, rates).map((c) => [c.category, c.amount]));
   return budgets
     .filter((b) => b.category)

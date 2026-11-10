@@ -9,6 +9,7 @@ import { navigate, openCapture, openEditor, useApp } from '@/core/app';
 import { useEnabledModules, useNow, usePrefs, useRecords } from '@/core/data/hooks';
 import { create, remove, titleOf, uid, update } from '@/core/data/store';
 import { addDays, diffDays, fmtDuration, fmtTime, greeting, parseDate, relativeDay, startOfDay, timeAgo, ym, ymd } from '@/core/lib/dates';
+import { goalProgress } from '@/core/lib/goals';
 import { byDate, isDue, periodProgress, streaks } from '@/core/lib/habits';
 import { DEFAULT_RATES, fmtMoney, inMonth, totals, type Txn } from '@/core/lib/money';
 import { parseQuickTask } from '@/core/lib/quickadd';
@@ -301,18 +302,6 @@ function RecentNotes() {
       ))}
     </div>
   );
-}
-
-export function goalProgress(goal: { id: string; progress?: number; targetValue?: number; currentValue?: number; status?: string }, all: { parentId?: string; id: string; progress?: number; targetValue?: number; currentValue?: number; status?: string; kind?: string }[], milestones: { id?: string; goalId?: string; done?: boolean }[], tasks: { id?: string; goalId?: string; status?: string }[] = [], depth = 0): number {
-  if (goal.status === 'achieved') return 1;
-  const children = all.filter((g) => g.parentId === goal.id && g.status !== 'dropped');
-  if (children.length && depth < 4) return children.reduce((a, c) => a + goalProgress(c, all, milestones, tasks, depth + 1), 0) / children.length;
-  if (Number(goal.targetValue) > 0) return Math.max(0, Math.min(1, Number(goal.currentValue ?? 0) / Number(goal.targetValue)));
-  const ms = milestones.filter((m) => m.goalId === goal.id);
-  if (ms.length) return ms.filter((m) => m.done).length / ms.length;
-  const linked = tasks.filter((t) => t.goalId === goal.id);
-  if (linked.length) return linked.filter((t) => t.status === 'done').length / linked.length;
-  return Math.max(0, Math.min(1, Number(goal.progress ?? 0)));
 }
 
 function GoalsWidget() {
