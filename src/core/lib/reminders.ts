@@ -56,9 +56,12 @@ export function dueNotifications(input: ReminderInput, now: Date, prefs: Reminde
       const due = parseDate(t.dueAt)!;
       const dateOnly = String(t.dueAt).length === 10;
       const days = diffDays(now, due);
-      if (days < 0) out.push({ id: `nt:task:${t.id}:overdue:${ymd(due)}`, title: 'Task overdue', body: String(t.title ?? ''), kind: 'task', source: 'tasks', sourceId: t.id, dueAt: due.toISOString() });
-      else if (dateOnly ? days === 0 : due.getTime() - now.getTime() <= 60 * 60_000) {
-        out.push({ id: `nt:task:${t.id}:due:${ymd(due)}`, title: dateOnly ? 'Task due today' : 'Task due soon', body: String(t.title ?? ''), kind: 'task', source: 'tasks', sourceId: t.id, dueAt: due.toISOString() });
+      if (days < 0 || (!dateOnly && due.getTime() < now.getTime() - 60 * 60_000)) out.push({ id: `nt:task:${t.id}:overdue:${ymd(due)}`, title: 'Task overdue', body: String(t.title ?? ''), kind: 'task', source: 'tasks', sourceId: t.id, dueAt: due.toISOString() });
+      else {
+        // Quick-capture reminders fire at their exact time; other timed tasks an hour ahead.
+        const reminder = Array.isArray(t.tags) && t.tags.includes('reminder');
+        const dueNow = dateOnly ? days === 0 : due.getTime() - now.getTime() <= (reminder ? 0 : 60 * 60_000);
+        if (dueNow) out.push({ id: `nt:task:${t.id}:due:${ymd(due)}`, title: reminder ? 'Reminder' : dateOnly ? 'Task due today' : 'Task due soon', body: String(t.title ?? ''), kind: 'task', source: 'tasks', sourceId: t.id, dueAt: due.toISOString() });
       }
     }
   }

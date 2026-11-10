@@ -24,8 +24,7 @@ export type Action =
   | { type: 'create'; collection: string; data: Fields }
   | { type: 'update'; patch: Fields }
   | { type: 'addTag'; tag: string }
-  | { type: 'notify'; title: string; body?: string }
-  | { type: 'webhook'; url: string; authorized?: boolean };
+  | { type: 'notify'; title: string; body?: string };
 
 export interface Rule {
   id: string;
@@ -47,8 +46,7 @@ export interface RecordEvent {
 export type Effect =
   | { type: 'create'; collection: string; data: Fields }
   | { type: 'update'; id: string; patch: Fields }
-  | { type: 'notify'; title: string; body: string; source?: string; sourceId?: string }
-  | { type: 'webhook'; url: string; payload: Fields };
+  | { type: 'notify'; title: string; body: string; source?: string; sourceId?: string };
 
 const str = (v: unknown) => (v == null ? '' : Array.isArray(v) ? v.join(',') : String(v));
 
@@ -111,10 +109,6 @@ export function effects(rule: Rule, subject: (Fields & { id?: string }) | null, 
         break;
       case 'notify':
         out.push({ type: 'notify', title: String(fill(action.title, rec, now)), body: String(fill(action.body ?? '', rec, now)), source: collection, sourceId: subject?.id });
-        break;
-      case 'webhook':
-        // External calls only run after the user has explicitly authorised this rule's URL.
-        if (action.authorized && /^https:\/\//.test(action.url)) out.push({ type: 'webhook', url: action.url, payload: { rule: rule.name ?? rule.id, record: rec } });
         break;
     }
   }

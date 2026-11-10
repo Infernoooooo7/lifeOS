@@ -29,14 +29,13 @@ describe('automation rules', () => {
       { type: 'create', collection: 'tasks', data: { title: 'Review {{title}}', dueAt: '{{today+1}}' } },
       { type: 'addTag', tag: 'shipped' },
       { type: 'notify', title: 'Done: {{title}}' },
-      { type: 'webhook', url: 'https://example.com/hook' },
     ] };
     const fx = effects(rule, { id: 't', title: 'Spec', tags: ['a'] }, now, 'tasks');
     expect(fx).toEqual([
       { type: 'create', collection: 'tasks', data: { title: 'Review Spec', dueAt: '2026-11-11' } },
       { type: 'update', id: 't', patch: { tags: ['a', 'shipped'] } },
       { type: 'notify', title: 'Done: Spec', body: '', source: 'tasks', sourceId: 't' },
-    ]); // the webhook is not authorised, so it does not run
+    ]);
   });
 
   it('skips disabled rules and rules whose conditions fail', () => {

@@ -12,10 +12,11 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 ## Checklist
 - [x] A. Research + architecture decisions
 - [x] C. Database schema, migration, auth API, sync API, API integration tests (23 passing)
-- [ ] Client data layer (Dexie store, sync client, hooks) + unit tests
-- [ ] B. Design system, UI kit, app shell (desktop + mobile), router
-- [ ] Feature registry + marketplace
-- [ ] Collection engine (generic list/table/board/calendar/gallery + forms + custom fields)
+- [x] Client data layer (Dexie store, sync client, hooks) + unit tests (unit + API + two-device tests passing)
+- [x] B1. Design tokens (globals.css), UI kit (src/ui), feature registry (src/core/registry.ts), collection defs (src/core/collections.ts)
+- [x] Collection engine: src/ui/CollectionView.tsx, RecordEditor.tsx, fields.tsx, MonthGrid.tsx
+- [ ] B2. App shell: src/app/layout.tsx, /app/[[...path]] route, AppRoot (boot + auth gate), Shell (sidebar, top bar, mobile nav, launcher, right panel), palette, capture, notifications  ← NEXT
+- [ ] Marketplace module UI
 - [ ] D. Core modules: dashboard, tasks, calendar, projects, notes, habits, finance, goals
 - [ ] E. Extended modules: learning, health, journal, focus, shopping, travel, files, entertainment, digital life, admin, utilities, automation, insights
 - [ ] F. Marketplace, onboarding, settings/personalization, backup/import/export
@@ -26,3 +27,9 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 - [ ] J. Deployment + live verification
 - [ ] Docs: README, RESEARCH, ARCHITECTURE, FEATURES (generated), TESTING, LICENSES, ROADMAP, DEPLOYMENT
 - [ ] Final honesty pass over feature statuses in the registry
+
+## Resume notes
+- Local dev DB: Postgres 16 on 127.0.0.1:5433 (data in /var/lib/lifeos-pg, start with pg_ctl as user postgres); `.env` points at it.
+- Run `npx vitest run` (unit + API) and `npx tsc --noEmit` before each commit.
+- Module components live in src/modules/<id>.tsx and are lazy-loaded from src/shell/modules.ts (not written yet).
+- Registry statuses must be re-verified against the built modules before release.
