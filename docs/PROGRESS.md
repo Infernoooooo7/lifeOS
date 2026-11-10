@@ -15,7 +15,9 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 - [x] Client data layer (Dexie store, sync client, hooks) + unit tests (unit + API + two-device tests passing)
 - [x] B1. Design tokens (globals.css), UI kit (src/ui), feature registry (src/core/registry.ts), collection defs (src/core/collections.ts)
 - [x] Collection engine: src/ui/CollectionView.tsx, RecordEditor.tsx, fields.tsx, MonthGrid.tsx
-- [ ] B2. App shell: src/app/layout.tsx, /app/[[...path]] route, AppRoot (boot + auth gate), Shell (sidebar, top bar, mobile nav, launcher, right panel), palette, capture, notifications  ← NEXT
+- [x] B2. App shell (src/shell/*): boot + auth gate, sidebar, top bar, mobile nav, launcher, context panel, onboarding, palette, capture, notifications
+- [x] Modules done: home (widgets), tasks
+- [ ] Modules still placeholders in src/modules/: calendar, projects, notes, habits, goals, finance, learning, health, journal, focus, lifestyle.tsx (shopping/travel/files/entertainment/digital/admin), utilities, automation, insights, spatial, marketplace, settings  ← NEXT (in this order)
 - [ ] Marketplace module UI
 - [ ] D. Core modules: dashboard, tasks, calendar, projects, notes, habits, finance, goals
 - [ ] E. Extended modules: learning, health, journal, focus, shopping, travel, files, entertainment, digital life, admin, utilities, automation, insights

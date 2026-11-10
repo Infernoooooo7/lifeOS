@@ -9,6 +9,7 @@ export interface HabitLike {
   days?: number[];
 }
 export interface LogLike {
+  id?: string;
   habitId?: string;
   date?: string;
   value?: number;

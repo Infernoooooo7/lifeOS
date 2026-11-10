@@ -212,7 +212,7 @@ function TopBar({ title }: { title: string }) {
       <div className="flex h-14 items-center gap-1.5 px-3 md:px-5">
         <span className="md:hidden"><Logo size={28} /></span>
         <h2 className="min-w-0 flex-1 truncate pl-1 font-display text-[1.02rem] font-semibold md:hidden">{title}</h2>
-        <button type="button" onClick={() => useApp.setState({ palette: true })} className="hidden h-9 min-w-0 max-w-md flex-1 items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-left text-sm text-faint hover:border-line-strong md:flex" aria-label="Search or run a command">
+        <button type="button" onClick={() => useApp.setState({ palette: true })} className="hidden h-9 min-w-40 max-w-md flex-[4] items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-left text-sm text-faint hover:border-line-strong md:flex" aria-label="Search or run a command">
           <Icon name="search" size={16} />
           <span className="flex-1 truncate">Search or jump to…</span>
           <kbd className="kbd">Ctrl K</kbd>

@@ -108,6 +108,7 @@ export function RecordEditor() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const allTasks = useRecords(request?.collection === 'tasks' ? 'tasks' : '__none');
+  const allEvents = useRecords(request?.collection === 'events' ? 'events' : '__none');
 
   const key = request ? `${request.collection}:${request.id ?? 'new'}` : null;
   useEffect(() => {
@@ -160,6 +161,19 @@ export function RecordEditor() {
     return saved ?? null;
   };
 
+  // Conflict detection: other timed events that overlap this one.
+  const clashes = (() => {
+    if (request.collection !== 'events' || draft.allDay || !draft.startAt) return [];
+    const start = new Date(draft.startAt as string).getTime();
+    const end = draft.endAt ? new Date(draft.endAt as string).getTime() : start + 3_600_000;
+    return allEvents.filter((e) => {
+      if (e.id === request.id || e.allDay || !e.startAt || e.recurrence) return false;
+      const s2 = new Date(e.startAt).getTime();
+      const e2 = e.endAt ? new Date(e.endAt).getTime() : s2 + 3_600_000;
+      return s2 < end && e2 > start;
+    });
+  })();
+
   const menu: MenuItem[] = [];
   if (!isNew && existing) {
     menu.push({
@@ -209,6 +223,12 @@ export function RecordEditor() {
         }}
       >
         {def.hint && <p className="col-span-full rounded-xl bg-accent-soft px-3 py-2 text-sm text-muted">{def.hint}</p>}
+        {clashes.length > 0 && (
+          <p role="status" className="col-span-full flex items-start gap-2 rounded-xl border border-warn/30 bg-warn/10 px-3 py-2 text-sm">
+            <Icon name="warning" size={16} className="mt-0.5 flex-none text-warn" />
+            <span>Overlaps with {clashes.slice(0, 3).map((c) => `“${titleOf(c)}”`).join(', ')}{clashes.length > 3 ? ` and ${clashes.length - 3} more` : ''}. You can still save.</span>
+          </p>
+        )}
         {fields.filter((f) => visible(f, draft)).map((f, i) => (
           <div key={f.k} className={cx('min-w-0', !f.half && 'sm:col-span-2', f.t === 'bool' && 'flex items-center justify-between gap-3 self-end rounded-xl border border-line px-3 py-2')}>
             {f.t === 'bool' ? (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { LifeDB, fieldsOf, searchText } from '@/core/data/db';
 import { ApiError, accountIdentity, api, writeIdentity, type AccountUser, type Identity } from '@/core/data/session';
 import { Icon } from '@/ui/icons';
@@ -9,14 +9,16 @@ import { Button, Field, Tabs } from '@/ui/kit';
 type Mode = 'signin' | 'register' | 'reset';
 
 export function Logo({ size = 36 }: { size?: number }) {
+  // Each instance needs its own gradient id: a gradient defined inside a hidden copy of the logo does not paint.
+  const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="flex-none">
       <defs>
-        <linearGradient id="lg-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#22d3ee" /><stop offset="0.55" stopColor="#60a5fa" /><stop offset="1" stopColor="#a78bfa" /></linearGradient>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#22d3ee" /><stop offset="0.55" stopColor="#60a5fa" /><stop offset="1" stopColor="#a78bfa" /></linearGradient>
       </defs>
       <rect width="64" height="64" rx="16" fill="#0d1017" />
-      <circle cx="32" cy="32" r="17" fill="none" stroke="url(#lg-a)" strokeWidth="4.5" strokeDasharray="78 29" strokeLinecap="round" transform="rotate(-50 32 32)" />
-      <circle cx="32" cy="32" r="6.5" fill="url(#lg-a)" />
+      <circle cx="32" cy="32" r="17" fill="none" stroke={`url(#${id})`} strokeWidth="4.5" strokeDasharray="78 29" strokeLinecap="round" transform="rotate(-50 32 32)" />
+      <circle cx="32" cy="32" r="6.5" fill={`url(#${id})`} />
       <circle cx="47.5" cy="20" r="3.2" fill="#a78bfa" />
     </svg>
   );

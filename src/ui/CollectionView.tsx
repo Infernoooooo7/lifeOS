@@ -15,7 +15,7 @@ import { FieldValue, optionOf, recordTitle, useFieldOptions } from './fields';
 import { Icon, type IconName } from './icons';
 import { Button, Checkbox, Empty, IconButton, Menu, Progress, Segmented, Sheet, cx, useWindowed, type MenuItem } from './kit';
 import { MonthGrid, MonthNav, type CalItem } from './MonthGrid';
-import { confirmDialog, toast } from './overlays';
+import { confirmDialog, promptDialog, toast } from './overlays';
 import { deleteWithUndo, toggleTask } from './RecordEditor';
 
 const VIEW_ICON: Record<ViewKind, IconName> = { list: 'list', table: 'table', board: 'columns', calendar: 'calendar', gallery: 'grid' };
@@ -36,6 +36,10 @@ export interface CollectionViewProps {
   /** extra toolbar content */
   toolbar?: ReactNode;
   hideToolbar?: boolean;
+  /** split the list view into labelled groups */
+  groupBy?: (records: Rec[]) => { key: string; label: string; items: Rec[] }[];
+  /** extra badges for a row (list view) */
+  rowExtra?: (rec: Rec) => ReactNode;
 }
 
 function isDoneRec(def: CollectionDef, rec: Rec) {
@@ -66,7 +70,7 @@ function Badges({ fields, rec, skip }: { fields: FieldDef[]; rec: Rec; skip?: st
   );
 }
 
-function Row({ def, fields, rec, onOpen, selecting, selected, onSelect }: { def: CollectionDef; fields: FieldDef[]; rec: Rec; onOpen: () => void; selecting: boolean; selected: boolean; onSelect: () => void }) {
+function Row({ def, fields, rec, onOpen, selecting, selected, onSelect, extra }: { def: CollectionDef; fields: FieldDef[]; rec: Rec; onOpen: () => void; selecting: boolean; selected: boolean; onSelect: () => void; extra?: ReactNode }) {
   const done = isDoneRec(def, rec);
   const tf = titleField(def);
   const moneyField = fields.find((f) => f.t === 'money' && f.list);
@@ -84,6 +88,7 @@ function Row({ def, fields, rec, onOpen, selecting, selected, onSelect }: { def:
         <span className={cx('block truncate font-medium', done && 'text-faint line-through', rec.private && 'blur-sm hover:blur-none focus:blur-none')}>{recordTitle(def.id, rec)}</span>
         <span className={cx('mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted empty:hidden', overdue && '[&_.chip:has(svg.lucide-calendar)]:!border-bad/40 [&_.chip:has(svg.lucide-calendar)]:!text-bad')}>
           <Badges fields={fields} rec={rec} skip={tf} />
+          {extra}
           {rec.archived && <span className="chip">Archived</span>}
           {rec._rejected && <span className="chip !text-bad">Sync error</span>}
         </span>
@@ -276,7 +281,7 @@ export function exportCsv(collection: string, fields: FieldDef[], records: Rec[]
  * Generic, definition-driven view of a collection: search, filters, sorting, five view types,
  * bulk actions, CSV import/export, custom fields and trash.
  */
-export function CollectionView({ collection, filter, defaults, views: viewsProp, viewKey, onOpen, emptyHint, addLabel, toolbar, hideToolbar }: CollectionViewProps) {
+export function CollectionView({ collection, filter, defaults, views: viewsProp, viewKey, onOpen, emptyHint, addLabel, toolbar, hideToolbar, groupBy, rowExtra }: CollectionViewProps) {
   const def = collectionDef(collection);
   const fields = useFields(collection);
   const all = useRecords(collection);
@@ -460,10 +465,23 @@ export function CollectionView({ collection, filter, defaults, views: viewsProp,
         {sentinel}
       </>
     );
+  } else if (groupBy) {
+    body = (
+      <div className="space-y-4">
+        {groupBy(records).map((g) => (
+          <section key={g.key}>
+            {g.label && <h3 className="eyebrow mb-1 flex items-center gap-2">{g.label}<span className="font-normal normal-case tracking-normal">{g.items.length}</span></h3>}
+            <div className="-mx-2">
+              {g.items.slice(0, 200).map((r) => <Row key={r.id} def={def} fields={fields} rec={r} onOpen={() => open(r)} selecting={selecting} selected={selected.has(r.id)} onSelect={() => toggleSelect(r.id)} extra={rowExtra?.(r)} />)}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
   } else {
     body = (
       <div className="-mx-2">
-        {visible.map((r) => <Row key={r.id} def={def} fields={fields} rec={r} onOpen={() => open(r)} selecting={selecting} selected={selected.has(r.id)} onSelect={() => toggleSelect(r.id)} />)}
+        {visible.map((r) => <Row key={r.id} def={def} fields={fields} rec={r} onOpen={() => open(r)} selecting={selecting} selected={selected.has(r.id)} onSelect={() => toggleSelect(r.id)} extra={rowExtra?.(r)} />)}
         {sentinel}
       </div>
     );
@@ -477,9 +495,11 @@ export function CollectionView({ collection, filter, defaults, views: viewsProp,
             <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input className="input !pl-9" type="search" placeholder={`Search ${def.label.toLowerCase()}…`} aria-label={`Search ${def.label}`} value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          {filterFields.map((f) => <FilterSelect key={f.k} field={f} value={filters[f.k] ?? ''} onChange={(v) => setFilters({ ...filters, [f.k]: v })} />)}
-          {toolbar}
-          {views.length > 1 && <Segmented size="sm" label="View" value={view} onChange={(v) => setPrefs({ views: { ...prefs.views, [key]: v } })} options={views.map((v) => ({ value: v, label: VIEW_LABEL[v], icon: VIEW_ICON[v] }))} />}
+          <div className="flex items-center gap-2 max-sm:order-last max-sm:-mx-4 max-sm:basis-[calc(100%+2rem)] max-sm:overflow-x-auto max-sm:px-4 max-sm:no-scrollbar max-sm:empty:hidden sm:contents">
+            {filterFields.map((f) => <FilterSelect key={f.k} field={f} value={filters[f.k] ?? ''} onChange={(v) => setFilters({ ...filters, [f.k]: v })} />)}
+            {toolbar}
+            {views.length > 1 && <Segmented size="sm" label="View" value={view} onChange={(v) => setPrefs({ views: { ...prefs.views, [key]: v } })} options={views.map((v) => ({ value: v, label: VIEW_LABEL[v], icon: VIEW_ICON[v] }))} />}
+          </div>
           <Menu label="More options" items={more} trigger={(p) => <IconButton icon="more" label="More options" {...p} />} />
           <Button variant="primary" icon="plus" onClick={() => add()} className="max-sm:hidden">{addLabel ?? `New ${def.one.toLowerCase()}`}</Button>
           <IconButton icon="plus" label={addLabel ?? `New ${def.one.toLowerCase()}`} className="!bg-accent !text-accent-ink sm:hidden" onClick={() => add()} />
@@ -497,6 +517,25 @@ export function CollectionView({ collection, filter, defaults, views: viewsProp,
               <Button size="sm" icon="calendar" disabled={!selected.size} onClick={() => (fileRef.current?.showPicker ? fileRef.current.showPicker() : fileRef.current?.click())}>Date</Button>
             </>
           )}
+          {fields.some((f) => f.k === 'tags') && (
+            <Button
+              size="sm" icon="tag" disabled={!selected.size}
+              onClick={async () => {
+                const tag = (await promptDialog({ title: 'Add a tag', placeholder: 'Tag name', confirmLabel: 'Add' }))?.trim().replace(/^#/, '');
+                if (!tag) return;
+                for (const id of selected) {
+                  const r = records.find((x) => x.id === id);
+                  const tags = Array.isArray(r?.tags) ? (r!.tags as string[]) : [];
+                  if (!tags.includes(tag)) await update(id, { tags: [...tags, tag] }, { silent: true });
+                }
+                toast(`Tagged ${selected.size}`, { tone: 'good' });
+                setSelected(new Set());
+                setSelecting(false);
+              }}
+            >
+              Tag
+            </Button>
+          )}
           {def.archive && <Button size="sm" icon="archive" disabled={!selected.size} onClick={() => void bulk({ archived: true })}>Archive</Button>}
           <Button size="sm" variant="danger" icon="trash" disabled={!selected.size} onClick={() => void bulk('delete')}>Delete</Button>
           <IconButton icon="x" label="Done selecting" onClick={() => { setSelecting(false); setSelected(new Set()); }} />
@@ -512,7 +551,7 @@ export function CollectionView({ collection, filter, defaults, views: viewsProp,
 function FilterSelect({ field, value, onChange }: { field: FieldDef; value: string; onChange: (v: string) => void }) {
   const { opts } = useFieldOptions(field);
   return (
-    <select className={cx('input !min-h-9 !w-auto max-w-40 !py-1 text-sm', value && '!border-accent text-accent')} aria-label={`Filter by ${field.label}`} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className={cx('input !min-h-9 !w-auto max-w-40 flex-none !py-1 text-sm', value && '!border-accent text-accent')} aria-label={`Filter by ${field.label}`} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{field.label}: all</option>
       {opts.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
     </select>
