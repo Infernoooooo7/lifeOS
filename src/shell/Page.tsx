@@ -1,0 +1,47 @@
+'use client';
+
+import type { CSSProperties, ReactNode } from 'react';
+import { navigate } from '@/core/app';
+import { moduleDef } from '@/core/registry';
+import { Icon } from '@/ui/icons';
+import { Tabs, cx, type Option } from '@/ui/kit';
+
+export interface ModuleProps {
+  /** path segments after the module id, e.g. ["board"] for /tasks/board */
+  sub: string[];
+}
+
+/** Standard module page: tinted header, optional tabs that map to sub-routes, then content. */
+export function Page<T extends string>({ module, title, subtitle, actions, tabs, tab, children, wide }: {
+  module: string;
+  title?: string;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  tabs?: (Option<T> & { count?: number })[];
+  tab?: T;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  const def = moduleDef(module);
+  return (
+    <div className={cx('mx-auto w-full px-4 pb-28 pt-4 md:px-6 md:pb-10 md:pt-6', wide ? 'max-w-[1500px]' : 'max-w-6xl')} style={{ '--mh': def?.hue ?? 215 } as CSSProperties}>
+      <header className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="grid size-11 flex-none place-items-center rounded-[14px] border border-line" style={{ background: 'oklch(0.75 0.14 var(--mh) / 0.14)', color: 'oklch(0.8 0.13 var(--mh))' }}>
+          <Icon name={def?.icon ?? 'circle'} size={21} />
+        </span>
+        <div className="min-w-0 flex-1 basis-40">
+          <h1 className="truncate text-[1.45rem] font-semibold leading-tight">{title ?? def?.name}</h1>
+          {(subtitle ?? def?.tagline) && <p className="truncate text-sm text-muted">{subtitle ?? def?.tagline}</p>}
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      </header>
+      {tabs && tab !== undefined && <Tabs className="mb-4" tabs={tabs} value={tab} onChange={(v) => navigate(`/${module}${v === tabs[0].value ? '' : `/${v}`}`)} />}
+      <div className="fade-up">{children}</div>
+    </div>
+  );
+}
+
+/** Picks the active tab from the first sub-segment. */
+export function tabFrom<T extends string>(sub: string[], tabs: { value: T }[]): T {
+  return (tabs.find((t) => t.value === sub[0])?.value ?? tabs[0].value) as T;
+}
