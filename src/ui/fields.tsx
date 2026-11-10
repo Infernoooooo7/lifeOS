@@ -445,5 +445,12 @@ export const recordTitle = (collectionId: string, rec: Rec): string => {
   const field = def.fields.find((f) => f.k === key);
   if (field?.t === 'select') return optionOf(field, v)?.label ?? String(v ?? 'Untitled');
   if (field?.t === 'date') return fmtDate(v) || 'Untitled';
-  return String(v ?? '').trim() || titleOf(rec);
+  const own = String(v ?? '').trim();
+  if (own) return own;
+  const fallback = titleOf(rec);
+  if (fallback !== 'Untitled') return fallback;
+  // Untitled records are identified by their first words or their date.
+  const body = String(rec.content ?? rec.notes ?? rec.description ?? '').replace(/[#*_>`\[\]]/g, '').trim();
+  if (body) return body.length > 70 ? `${body.slice(0, 70)}…` : body;
+  return def.date && rec[def.date] ? fmtDate(rec[def.date], { year: true }) : 'Untitled';
 };
