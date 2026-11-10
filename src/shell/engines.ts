@@ -26,7 +26,8 @@ async function showSystemNotification(title: string, body: string, tag: string) 
   }
 }
 
-async function deliver(n: { id: string; title: string; body: string }, budget: { left: number }) {
+/** Show a notification now: a system notification when the app is in the background and allowed, otherwise a toast. */
+export async function deliver(n: { id: string; title: string; body: string }, budget: { left: number } = { left: 1 }) {
   if (!prefs || inQuietHours(new Date(), prefs.quiet) || budget.left <= 0) return;
   budget.left--;
   const shown = prefs.notify.browser && document.visibilityState !== 'visible' ? await showSystemNotification(n.title, n.body, n.id) : false;

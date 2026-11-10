@@ -17,7 +17,9 @@ import { RecordEditor, toggleTask } from '@/ui/RecordEditor';
 import { switchWorkspace } from './AppRoot';
 import { Logo } from './AuthScreen';
 import { Capture } from './Capture';
-import { setEnginePrefs } from './engines';
+import { chime } from '@/core/ambient';
+import { fmtClock, msLeft, onTimerFinish, setTimerSettings, useFocus } from '@/core/focusTimer';
+import { deliver, setEnginePrefs } from './engines';
 import { LOADERS, warmModules } from './modules';
 import { NotificationCenter } from './Notifications';
 import type { ModuleProps } from './Page';
@@ -202,6 +204,17 @@ function ProfileMenu() {
   );
 }
 
+/** Running focus timer, visible from every module. */
+function FocusChip() {
+  const timer = useFocus();
+  if (timer.phase === 'idle') return null;
+  return (
+    <button type="button" onClick={() => navigate('/focus')} aria-label={`${timer.phase === 'break' ? 'Break' : 'Focus'} timer, ${fmtClock(msLeft(timer))} left`} className={cx('num inline-flex h-9 flex-none items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-medium', timer.phase === 'break' ? 'bg-good/15 text-good' : 'bg-accent-soft text-accent')}>
+      <Icon name={timer.pausedLeft !== null ? 'pause' : 'timer'} size={15} />{fmtClock(msLeft(timer))}
+    </button>
+  );
+}
+
 function TopBar({ title }: { title: string }) {
   const [prefs, setPrefs] = usePrefs();
   const unread = useUnread();
@@ -232,6 +245,7 @@ function TopBar({ title }: { title: string }) {
           </div>
         )}
         <IconButton icon="search" label="Search" className="md:hidden" onClick={() => useApp.setState({ palette: true })} />
+        <FocusChip />
         <SyncBadge />
         <span className="relative">
           <IconButton icon="bell" label={`Notifications${unread ? `, ${unread} unread` : ''}`} onClick={() => useApp.setState({ notifications: true })} />
@@ -632,6 +646,20 @@ export function Shell() {
       openCapture();
       window.history.replaceState(null, '', window.location.pathname);
     }
+  }, []);
+
+  // The focus timer runs for the whole app, not just while its module is open.
+  useEffect(() => {
+    setTimerSettings(prefs.focus);
+  }, [prefs.focus]);
+  useEffect(() => {
+    onTimerFinish((phase, minutes, next) => {
+      chime();
+      void deliver({ id: `focus:${Date.now()}`, title: phase === 'focus' ? `Focus session complete — ${minutes} min` : 'Break is over', body: next === 'break' ? 'Time for a break.' : 'Ready for the next session?' });
+    });
+    return () => {
+      onTimerFinish(null);
+    };
   }, []);
 
   const active = segments[0] ?? 'home';
