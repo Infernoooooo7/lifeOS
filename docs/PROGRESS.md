@@ -16,8 +16,8 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 - [x] B1. Design tokens (globals.css), UI kit (src/ui), feature registry (src/core/registry.ts), collection defs (src/core/collections.ts)
 - [x] Collection engine: src/ui/CollectionView.tsx, RecordEditor.tsx, fields.tsx, MonthGrid.tsx
 - [x] B2. App shell (src/shell/*): boot + auth gate, sidebar, top bar, mobile nav, launcher, context panel, onboarding, palette, capture, notifications
-- [x] Modules done: home, tasks, calendar, projects, notes, habits, goals, finance, learning, health, journal, focus, lifestyle (shopping/travel/files/entertainment/digital/admin), utilities
-- [ ] Modules still placeholders in src/modules/: automation, insights, marketplace, settings, spatial  ← NEXT (in this order). Then: public/sw.js + icons, landing page, e2e tests, docs, deploy.
+- [x] Modules done: all except spatial (home, tasks, calendar, projects, notes, habits, goals, finance, learning, health, journal, focus, lifestyle x6, utilities, automation, insights, marketplace, settings)
+- [ ] src/modules/spatial.tsx (3D workspace) ← NEXT. Then: public/sw.js + icons (scripts/gen-icons.mjs), landing page, full visual pass with scripts/dev/shot.mjs, e2e tests, docs, registry honesty pass, deploy.
 - [ ] Marketplace module UI
 - [ ] D. Core modules: dashboard, tasks, calendar, projects, notes, habits, finance, goals
 - [ ] E. Extended modules: learning, health, journal, focus, shopping, travel, files, entertainment, digital life, admin, utilities, automation, insights
