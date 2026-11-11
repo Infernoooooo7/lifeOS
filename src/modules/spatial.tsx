@@ -33,10 +33,10 @@ interface Theme { text: string; muted: string; card: string; line: string; dark:
 
 const hueColor = (oklchHue: number, l = 0.62) => new THREE.Color().setHSL((((oklchHue - 22) % 360) + 360) % 360 / 360, 0.78, l);
 const CAMERA: Record<View, { pos: [number, number, number]; target: [number, number, number] }> = {
-  overview: { pos: [0, 3.2, 13], target: [0, 0.3, 0] },
-  tasks: { pos: [0, 1.2, 8.2], target: [0, 0.6, 2.2] },
-  goals: { pos: [-7.5, 1.6, 6.5], target: [-6, 0.6, 0] },
-  projects: { pos: [7.5, 1.8, 6.5], target: [6, 0.4, 0] },
+  overview: { pos: [0, 4.2, 16.5], target: [0, 0.9, 0] },
+  tasks: { pos: [0, 2.4, 8.4], target: [0, 2.1, 2.2] },
+  goals: { pos: [-8.6, 1.6, 6.8], target: [-7.4, 0.6, 0] },
+  projects: { pos: [8.6, 1.8, 6.8], target: [7.4, 0.4, 0] },
   knowledge: { pos: [0, 2, 12], target: [0, 0, 0] },
 };
 
@@ -206,7 +206,7 @@ function TaskCards({ tasks, theme, animate }: { tasks: Rec[]; theme: Theme; anim
   useFrame(({ clock }) => { if (animate && group.current) group.current.children.forEach((c, i) => (c.position.y = (c.userData.baseY as number) + Math.sin(clock.elapsedTime * 0.6 + i * 1.3) * 0.06)); });
   const cols = Math.min(4, Math.max(1, tasks.length));
   return (
-    <group ref={group} position={[0, 0.2, 2.6]}>
+    <group ref={group} position={[0, 1.55, 2.2]}>
       {tasks.map((t, i) => {
         const row = Math.floor(i / cols);
         const col = i % cols;
@@ -230,7 +230,7 @@ function TaskCards({ tasks, theme, animate }: { tasks: Rec[]; theme: Theme; anim
 
 function GoalRings({ goals, theme }: { goals: { rec: Rec; progress: number }[]; theme: Theme }) {
   return (
-    <group position={[-6, 0.4, 0]}>
+    <group position={[-7.4, 0.4, 0]}>
       {goals.map((g, i) => {
         const col = i % 2;
         const row = Math.floor(i / 2);
@@ -266,7 +266,7 @@ function ProjectClusters({ projects, q, theme, animate }: { projects: { rec: Rec
   useEffect(() => { refs.current.forEach((m, i) => m && place(m, Math.min(12, projects[i]?.open ?? 0), 0)); }); // eslint-disable-line react-hooks/exhaustive-deps
   useFrame(({ clock }) => { if (animate) refs.current.forEach((m, i) => m && place(m, Math.min(12, projects[i]?.open ?? 0), clock.elapsedTime)); });
   return (
-    <group position={[6, 0.4, 0]}>
+    <group position={[7.4, 0.4, 0]}>
       {projects.map((p, i) => {
         const col = i % 2;
         const row = Math.floor(i / 2);
@@ -330,11 +330,11 @@ function Stars({ count, dark }: { count: number; dark: boolean }) {
 }
 
 /** Moves the camera to the preset for the active view, then hands control back to the user. */
-function Rig({ view }: { view: View }) {
+function Rig({ view, shift }: { view: View; shift: number }) {
   const { camera, invalidate } = useThree();
   const controls = useRef<React.ComponentRef<typeof OrbitControls>>(null);
   const moving = useRef(true);
-  const goal = useMemo(() => ({ pos: new THREE.Vector3(...CAMERA[view].pos), target: new THREE.Vector3(...CAMERA[view].target) }), [view]);
+  const goal = useMemo(() => ({ pos: new THREE.Vector3(...CAMERA[view].pos).add(new THREE.Vector3(shift, 0, 0)), target: new THREE.Vector3(...CAMERA[view].target).add(new THREE.Vector3(shift, 0, 0)) }), [view, shift]);
   useEffect(() => { moving.current = true; invalidate(); }, [goal, invalidate]);
   useFrame(() => {
     if (!moving.current || !controls.current) return;
@@ -460,7 +460,7 @@ export default function Spatial(_: ModuleProps) {
           <pointLight position={[0, 0, 0]} intensity={30} color={accent} distance={18} />
           <directionalLight position={[6, 9, 8]} intensity={theme.dark ? 1.3 : 1.8} />
           <Stars count={q.stars} dark={theme.dark} />
-          <Rig view={view} />
+          <Rig view={view} shift={panel && !coarse ? (view === 'overview' || view === 'knowledge' ? 2.6 : 1.4) : 0} />
           {view !== 'knowledge' && (
             <>
               <Core ratio={todayTasks.ratio} q={q} animate={!reduced} accent={accent} />

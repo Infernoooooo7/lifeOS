@@ -34,10 +34,10 @@ export function Bars({ data, series, x = 'label', height = 200, fmt = compact, s
   const empty = !data.some((d) => series.some((s) => Number(d[s.key]) > 0));
   return (
     <Frame height={height} label={label} empty={empty}>
-      <BarChart data={data} margin={{ top: 6, right: 4, left: -18, bottom: 0 }} barCategoryGap="22%">
+      <BarChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }} barCategoryGap="22%">
         <CartesianGrid stroke="var(--line)" vertical={false} />
         <XAxis dataKey={x} {...axis} interval="preserveStartEnd" />
-        <YAxis {...axis} tickFormatter={fmt} width={52} />
+        <YAxis {...axis} tickFormatter={compact} width={38} allowDecimals={false} />
         <Tooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={tooltipStyle} formatter={(v) => fmt(Number(v))} />
         {series.map((s, i) => <Bar key={s.key} dataKey={s.key} name={s.name ?? s.key} fill={s.color ?? SERIES[i % SERIES.length]} radius={stacked ? 0 : [5, 5, 0, 0]} stackId={stacked ? 'a' : undefined} maxBarSize={38} isAnimationActive={false} />)}
       </BarChart>
@@ -49,7 +49,7 @@ export function Lines({ data, series, x = 'label', height = 200, fmt = compact, 
   const empty = data.filter((d) => series.some((s) => d[s.key] != null)).length < 2;
   return (
     <Frame height={height} label={label} empty={empty}>
-      <AreaChart data={data} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
         <defs>
           {series.map((s, i) => (
             <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -60,7 +60,7 @@ export function Lines({ data, series, x = 'label', height = 200, fmt = compact, 
         </defs>
         <CartesianGrid stroke="var(--line)" vertical={false} />
         <XAxis dataKey={x} {...axis} interval="preserveStartEnd" minTickGap={24} />
-        <YAxis {...axis} tickFormatter={fmt} width={52} domain={['auto', 'auto']} />
+        <YAxis {...axis} tickFormatter={compact} width={38} domain={['auto', 'auto']} />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmt(Number(v))} />
         {series.map((s, i) => <Area key={s.key} type="monotone" dataKey={s.key} name={s.name ?? s.key} stroke={s.color ?? SERIES[i % SERIES.length]} strokeWidth={2} fill={`url(#grad-${s.key})`} connectNulls dot={data.length < 20 ? { r: 2.5 } : false} isAnimationActive={false} />)}
       </AreaChart>
