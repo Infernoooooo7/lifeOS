@@ -5,7 +5,8 @@ import { ACCENTS, navigate, useApp, type Prefs } from '@/core/app';
 import { COLLECTIONS, OPTION_SETS, collection as collectionDef } from '@/core/collections';
 import { getDb } from '@/core/data/db';
 import { useConflicts, useModules, usePrefs, useRecords, useSetting, useSync } from '@/core/data/hooks';
-import { ApiError, api, writeIdentity, type AccountUser } from '@/core/data/session';
+import { useAccount, useDeviceSessions, useRevokeSessions, useUpdateProfile } from '@/core/data/server';
+import { ApiError, api, writeIdentity } from '@/core/data/session';
 import { create, getRec, remove, restore, update } from '@/core/data/store';
 import { syncNow } from '@/core/data/syncClient';
 import { applyImport, downloadFile, exportBackup, parseBackup, planImport, type BackupFile, type ConflictMode, type ImportPlan } from '@/core/lib/backup';
@@ -45,11 +46,12 @@ const Card = ({ title, children, tone }: { title?: string; children: ReactNode; 
 
 function Profile() {
   const identity = useApp((s) => s.identity);
-  const [user, setUser] = useState<AccountUser | null>(null);
+  const { data: user } = useAccount();
+  const updateProfile = useUpdateProfile();
   const [name, setName] = useState('');
   useEffect(() => {
-    if (identity?.mode === 'account') void api<{ user: AccountUser }>('auth/me').then((r) => { setUser(r.user); setName(r.user.displayName); }).catch(() => undefined);
-  }, [identity]);
+    if (user) setName(user.displayName);
+  }, [user]);
   if (identity?.mode !== 'account') {
     return (
       <Card title="You are using LIFEOS on this device only">
@@ -58,21 +60,20 @@ function Profile() {
       </Card>
     );
   }
-  const save = async () => {
-    try {
-      const res = await api<{ user: AccountUser }>('auth/me', { method: 'PATCH', body: { displayName: name } });
-      setUser(res.user);
-      writeIdentity({ mode: 'account', userId: res.user.id, email: res.user.email, displayName: res.user.displayName });
-      useApp.setState({ identity: { mode: 'account', userId: res.user.id, email: res.user.email, displayName: res.user.displayName } });
-      toast('Profile saved', { tone: 'good' });
-    } catch (e) {
-      toast(e instanceof ApiError ? e.message : 'Could not save', { tone: 'bad' });
-    }
-  };
+  const save = () =>
+    updateProfile.mutate({ displayName: name }, {
+      onSuccess: (saved) => {
+        const next = { mode: 'account' as const, userId: saved.id, email: saved.email, displayName: saved.displayName };
+        writeIdentity(next);
+        useApp.setState({ identity: next });
+        toast('Profile saved', { tone: 'good' });
+      },
+      onError: (e) => toast(e instanceof ApiError ? e.message : 'Could not save', { tone: 'bad' }),
+    });
   return (
     <Card title="Profile">
       <Row title="E-mail" hint="Used to sign in.">{identity.email}</Row>
-      <Row title="Display name" hint="Shown in greetings."><input className="input !w-56" aria-label="Display name" value={name} onChange={(e) => setName(e.target.value)} /><Button variant="primary" disabled={!user || name === user.displayName} onClick={() => void save()}>Save</Button></Row>
+      <Row title="Display name" hint="Shown in greetings."><input className="input !w-56" aria-label="Display name" value={name} onChange={(e) => setName(e.target.value)} /><Button variant="primary" disabled={!user || name === user.displayName || updateProfile.isPending} onClick={save}>Save</Button></Row>
       {user && <Row title="Member since">{new Date(user.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</Row>}
     </Card>
   );
@@ -373,12 +374,11 @@ function SyncSection() {
 
 function Account() {
   const identity = useApp((s) => s.identity);
-  const [sessions, setSessions] = useState<{ id: string; deviceName: string; lastSeenAt: string; createdAt: string; current: boolean }[] | null>(null);
+  const { data: sessions, refetch: load } = useDeviceSessions();
+  const revoke = useRevokeSessions();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [code, setCode] = useState<string | null>(null);
-  const load = () => void api<{ sessions: NonNullable<typeof sessions> }>('auth/sessions').then((r) => setSessions(r.sessions)).catch(() => setSessions([]));
-  useEffect(() => { if (identity?.mode === 'account') load(); }, [identity]);
   const guard = async (fn: () => Promise<void>) => { try { await fn(); } catch (e) { toast(e instanceof ApiError ? e.message : 'Something went wrong', { tone: 'bad' }); } };
   const eraseLocal = async () => {
     if (!(await confirmDialog({ title: 'Erase everything on this device?', body: 'All LIFEOS data stored in this browser will be deleted. Download a backup first if you want to keep it. This cannot be undone.', danger: true, confirmLabel: 'Erase' }))) return;
@@ -392,12 +392,12 @@ function Account() {
       <Card title="Signed-in devices">
         {!sessions ? <p className="text-sm text-faint">Loading…</p> : sessions.map((s) => (
           <div key={s.id} className="row"><Icon name={/Android|iOS/.test(s.deviceName) ? 'phone' : 'monitor'} size={17} className="text-muted" /><span className="min-w-0 flex-1"><span className="block truncate font-medium">{s.deviceName || 'Unknown device'}</span><span className="text-xs text-faint">Active {timeAgo(new Date(s.lastSeenAt).getTime())} · signed in {new Date(s.createdAt).toLocaleDateString()}</span></span>
-            {s.current ? <span className="chip chip-accent">This device</span> : <Button size="sm" onClick={() => void guard(async () => { await api('auth/sessions/revoke', { body: { id: s.id } }); load(); toast('Device signed out'); })}>Sign out</Button>}</div>
+            {s.current ? <span className="chip chip-accent">This device</span> : <Button size="sm" disabled={revoke.isPending} onClick={() => revoke.mutate({ id: s.id }, { onSuccess: () => toast('Device signed out'), onError: (e) => toast(e instanceof ApiError ? e.message : 'Something went wrong', { tone: 'bad' }) })}>Sign out</Button>}</div>
         ))}
-        {sessions && sessions.length > 1 && <Button className="mt-2" size="sm" icon="logout" onClick={() => void guard(async () => { await api('auth/sessions/revoke', { body: { others: true } }); load(); toast('All other devices signed out'); })}>Sign out all other devices</Button>}
+        {sessions && sessions.length > 1 && <Button className="mt-2" size="sm" icon="logout" onClick={() => revoke.mutate({ others: true }, { onSuccess: () => toast('All other devices signed out') })}>Sign out all other devices</Button>}
       </Card>
       <Card title="Change password">
-        <form className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(e) => { e.preventDefault(); void guard(async () => { await api('auth/password', { body: { current, next } }); setCurrent(''); setNext(''); toast('Password changed. Other devices were signed out.', { tone: 'good' }); load(); }); }}>
+        <form className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(e) => { e.preventDefault(); void guard(async () => { await api('auth/password', { body: { current, next } }); setCurrent(''); setNext(''); toast('Password changed. Other devices were signed out.', { tone: 'good' }); void load(); }); }}>
           <Field label="Current password"><input className="input" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} /></Field>
           <Field label="New password (10+ characters)"><input className="input" type="password" autoComplete="new-password" required minLength={10} value={next} onChange={(e) => setNext(e.target.value)} /></Field>
           <Button type="submit" variant="primary" className="self-end">Change</Button>

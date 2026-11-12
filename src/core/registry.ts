@@ -98,7 +98,7 @@ export const MODULES: ModuleDef[] = [
       ['calendars', 'Multiple calendars', 'Colour-coded calendars that can be shown or hidden.'],
       ['blocking', 'Time blocking', 'Tap an empty slot to block time, or block time for a task in one tap.'],
       ['availability', 'Availability finder', 'Lists free slots within your working hours for any day.'],
-      ['categories', 'Event categories', 'Personal, extendable categories with filtering.'],
+      ['categories', 'Event categories', 'Personal, extendable event categories; appointments are listed by category in Life admin.'],
       ['conflicts', 'Conflict detection', 'Overlapping events are flagged in the editor and in views.'],
       ['timezones', 'Time zones', 'Store an event time zone and see it next to local time.'],
       ['ics-import', 'Calendar import (.ics)', 'Import events from any iCalendar file, with a preview.'],
@@ -193,7 +193,7 @@ export const MODULES: ModuleDef[] = [
       ['csv-export', 'CSV export', 'Export transactions for spreadsheets.'],
       ['accounts', 'Multiple accounts', 'Bank, cash, card and wallet accounts with running balances and transfers.'],
       ['currencies', 'Multiple currencies', 'Per-transaction currency converted with editable rates; INR by default.', 'partial', 'Exchange rates are reference values you can edit, not a live feed.'],
-      ['goals', 'Financial goals', 'Money goals tracked alongside your other goals.', 'implemented', undefined, ['goals']],
+      ['goals', 'Financial goals', 'Savings targets with the monthly amount needed to reach them on time; wider money goals live in Goals under the Finance area.'],
     ]),
   },
   {
@@ -304,7 +304,7 @@ export const MODULES: ModuleDef[] = [
       ['attachments', 'Device attachments', 'Attach a file to a record; it is kept in this browser.', 'partial', 'Attachments stay on the device where they were added; they are not uploaded or synced.'],
       ['usage', 'Storage usage', 'How much space LIFEOS uses on this device.'],
       ['search', 'Document search', 'Filter by name, tag, category and notes.'],
-      ['cloud', 'Cloud file storage', 'Upload attachments so they follow you across devices.', 'integration', 'Needs managed object storage (for example Vercel Blob or S3) and its credentials.'],
+      ['cloud', 'Cloud file storage', 'Upload attachments so they follow you across devices.', 'planned', 'Not built yet. Needs managed object storage (for example Vercel Blob or S3) and an upload endpoint.'],
     ]),
   },
   {

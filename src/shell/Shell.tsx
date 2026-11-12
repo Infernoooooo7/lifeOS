@@ -1,8 +1,11 @@
 'use client';
 
+import { QueryClientProvider } from '@tanstack/react-query';
+import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { Component, Suspense, lazy, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { ACCENTS, navigate, openCapture, openEditor, useApp, useSegments, type Prefs } from '@/core/app';
 import { useEnabledModules, useModules, usePrefs, useRecords, useSync, setModule, type ModuleState } from '@/core/data/hooks';
+import { queryClient } from '@/core/data/server';
 import { writeIdentity, api } from '@/core/data/session';
 import { create } from '@/core/data/store';
 import { syncNow, syncState } from '@/core/data/syncClient';
@@ -677,6 +680,9 @@ export function Shell() {
   const immersive = active === 'spatial';
 
   return (
+    <QueryClientProvider client={queryClient}>
+    <MotionConfig reducedMotion={prefs.motion === 'reduced' ? 'always' : 'user'}>
+    <LazyMotion features={domAnimation}>
     <div className="app-canvas flex min-h-dvh">
       <a href="#main-scroll" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-solid focus:px-3 focus:py-2">Skip to content</a>
       <Sidebar />
@@ -707,5 +713,8 @@ export function Shell() {
       {needsOnboarding && <Onboarding onDone={() => setSkipOnboarding(true)} />}
       <OverlayHost />
     </div>
+    </LazyMotion>
+    </MotionConfig>
+    </QueryClientProvider>
   );
 }

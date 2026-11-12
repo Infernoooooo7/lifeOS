@@ -1,5 +1,6 @@
 'use client';
 
+import { m } from 'motion/react';
 import type { CSSProperties, ReactNode } from 'react';
 import { navigate } from '@/core/app';
 import { moduleDef } from '@/core/registry';
@@ -36,7 +37,7 @@ export function Page<T extends string>({ module, title, subtitle, actions, tabs,
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </header>
       {tabs && tab !== undefined && <Tabs className="mb-4" tabs={tabs} value={tab} onChange={(v) => navigate(`/${module}${v === tabs[0].value ? '' : `/${v}`}`)} />}
-      <div className="fade-up">{children}</div>
+      <m.div key={tab ?? 'page'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>{children}</m.div>
     </div>
   );
 }

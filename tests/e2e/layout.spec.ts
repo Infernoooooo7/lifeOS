@@ -58,6 +58,7 @@ test('forms are usable on this screen size and dialogs trap focus', async ({ pag
   await page.getByRole('button', { name: /New task/ }).first().click();
   const editor = page.getByRole('dialog', { name: 'New task' });
   await expect(editor).toBeVisible();
+  await page.waitForTimeout(450); // let the slide-in finish before measuring
   const box = await editor.boundingBox();
   const viewport = page.viewportSize()!;
   expect(box!.x).toBeGreaterThanOrEqual(0);

@@ -160,8 +160,8 @@ test.describe('calendar, habits, notes, finance', () => {
     await editor.getByLabel('Title').fill('Quarterly planning');
     await editor.getByRole('button', { name: 'Add event' }).click();
     await page.getByRole('radio', { name: 'Agenda' }).click();
-    await expect(page.getByText('Quarterly planning')).toBeVisible();
-    await expect(page.getByText('Overlaps').first()).toBeVisible();
+    await expect(page.locator('#main-scroll .card', { hasText: 'Quarterly planning' })).toBeVisible();
+    await expect(page.locator('#main-scroll').getByText('Overlaps').first()).toBeVisible();
   });
 
   test('habit check-ins update progress and streaks', async ({ page }) => {
