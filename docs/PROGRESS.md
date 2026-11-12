@@ -20,7 +20,8 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 - [x] Spatial 3D module, service worker (src/app/sw.js/route.ts), icons, landing page, visual tour (scripts/dev/tour.mjs)
 - [x] E2E suites written: tests/e2e/{workflows,layout,sync,pwa,spatial}.spec.ts (run: npm run build && npm run test:e2e)
 - [x] Full e2e green on desktop + phone (52), unit/API green (98); registry honesty pass done; FEATURES.md generated; LICENSES.md generated
-- [ ] NEXT: deploy on Render (free web service + free Postgres, branch ccr-b33f1d63-qjl2lu, region singapore; build `npm ci --include=dev && npm run build`, start `npx prisma migrate deploy && npx next start`), verify live; then write README, RESEARCH, ARCHITECTURE, TESTING, DEPLOYMENT, ROADMAP.
+- [x] Render deployment created via blueprint exs-dbqp5kgae00c7392b9gg (web service `lifeos` + Postgres `lifeos-db` dpg-dbqp5d3rjlhs73a2d2jg-a, free plans, region singapore, auto-sync from branch ccr-b33f1d63-qjl2lu)
+- [ ] NEXT: verify the live URL (https://lifeos.onrender.com or the suffix Render assigned — check list_services), run a smoke test against it; write README, RESEARCH, ARCHITECTURE, TESTING, DEPLOYMENT, ROADMAP; final commit.
 - [ ] Marketplace module UI
 - [ ] D. Core modules: dashboard, tasks, calendar, projects, notes, habits, finance, goals
 - [ ] E. Extended modules: learning, health, journal, focus, shopping, travel, files, entertainment, digital life, admin, utilities, automation, insights
