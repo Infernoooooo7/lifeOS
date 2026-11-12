@@ -346,6 +346,7 @@ const defs: CollectionDef[] = [
   { id: 'automations', label: 'Automations', one: 'Automation', icon: 'workflow', title: 'name', system: true, fields: [] },
   { id: 'templates', label: 'Templates', one: 'Template', icon: 'copy', title: 'name', system: true, fields: [] },
   { id: 'notifications', label: 'Notifications', one: 'Notification', icon: 'bell', system: true, fields: [] },
+  { id: 'conflicts', label: 'Sync conflicts', one: 'Sync conflict', icon: 'warning', system: true, fields: [] },
   { id: 'activity', label: 'Activity', one: 'Activity', icon: 'activity', title: 'summary', system: true, fields: [] },
   { id: 'dashboards', label: 'Dashboards', one: 'Dashboard', icon: 'dashboard', title: 'name', system: true, fields: [] },
   { id: 'settings', label: 'Settings', one: 'Setting', icon: 'settings', system: true, fields: [] },

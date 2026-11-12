@@ -27,19 +27,6 @@ export interface Rec {
   [field: string]: any;
 }
 
-export interface ConflictRow {
-  key?: number;
-  id: string;
-  c: string;
-  field: string;
-  kept: unknown;
-  discarded: unknown;
-  /** whose value was discarded */
-  loser: 'local' | 'remote';
-  at: number;
-  resolved?: 1;
-}
-
 export interface BlobRow {
   id: string;
   blob: Blob;
@@ -51,7 +38,6 @@ export interface BlobRow {
 export class LifeDB extends Dexie {
   records!: Table<Rec, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
-  conflicts!: Table<ConflictRow, number>;
   blobs!: Table<BlobRow, string>;
 
   constructor(name: string) {
@@ -59,7 +45,6 @@ export class LifeDB extends Dexie {
     this.version(1).stores({
       records: 'id, _c, [_c+ws], _dirty, _ua',
       meta: 'key',
-      conflicts: '++key, id, at',
       blobs: 'id',
     });
   }

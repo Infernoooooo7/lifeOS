@@ -5,7 +5,7 @@ import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { DEFAULT_PREFS, useApp, type Prefs } from '@/core/app';
 import { OPTION_SETS, collection as collectionDef, type FieldDef } from '@/core/collections';
 import { MODULES, type ModuleDef } from '@/core/registry';
-import { getDb, hasDb, type ConflictRow, type Rec } from './db';
+import { getDb, hasDb, type Rec } from './db';
 import { GLOBAL_COLLECTIONS, upsert } from './store';
 import { syncState, type SyncState } from './syncClient';
 
@@ -111,13 +111,14 @@ export function useSync(): SyncState & { pending: number; conflicts: number } {
   const state = useSyncExternalStore(syncState.subscribe, syncState.getState, syncState.getState);
   const ready = useApp((s) => s.ready);
   const pending = useLiveQuery(() => (ready && hasDb() ? getDb().records.where('_dirty').equals(1).count() : Promise.resolve(0)), [ready]) ?? 0;
-  const conflicts = useLiveQuery(() => (ready && hasDb() ? getDb().conflicts.filter((c) => !c.resolved).count() : Promise.resolve(0)), [ready]) ?? 0;
+  const conflicts = useConflicts().filter((c) => !c.resolved).length;
   return { ...state, pending, conflicts };
 }
 
-export function useConflicts(): ConflictRow[] {
-  const ready = useApp((s) => s.ready);
-  return useLiveQuery(async (): Promise<ConflictRow[]> => (ready && hasDb() ? getDb().conflicts.orderBy('at').reverse().limit(200).toArray() : []), [ready]) ?? [];
+/** Conflict notices (newest first). They are ordinary synced records, so every device shows the same list. */
+export function useConflicts(): Rec[] {
+  const rows = useRecords('conflicts');
+  return useMemo(() => [...rows].sort((a, b) => b._ca - a._ca).slice(0, 200), [rows]);
 }
 
 /** Re-render on an interval (clocks, countdowns, "x minutes ago"). */

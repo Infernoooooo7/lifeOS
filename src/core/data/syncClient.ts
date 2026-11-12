@@ -1,7 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 import { applyPatch, diff, same } from '@/core/sync/merge';
 import { MAX_CHANGES_PER_PUSH, type Change, type SyncResponse, type WireRecord } from '@/core/sync/protocol';
-import { fieldsOf, getDb, hasDb, searchText, type ConflictRow, type LifeDB, type Rec } from './db';
+import { fieldsOf, getDb, hasDb, searchText, type LifeDB, type Rec } from './db';
 import { ApiError, api } from './session';
 import { onChange } from './store';
 
@@ -47,11 +47,12 @@ async function applyRemote(db: LifeDB, remote: WireRecord): Promise<void> {
   }
   const mine = diff(local._base ?? null, fieldsOf(local)).patch;
   const result = applyPatch(remote.data, local._base ?? null, mine, local._ua, remote.ua);
+  // A conflict found while merging on this device is recorded as a synced notice (the server does the same
+  // for conflicts it finds), so it shows up in the sync centre of every device.
   const now = Date.now();
-  const conflicts: ConflictRow[] = result.conflicts.map((c) => ({
-    id: remote.id, c: remote.c, field: c.field, kept: c.kept, discarded: c.discarded, loser: c.loser === 'patch' ? 'local' : 'remote', at: now,
-  }));
-  if (conflicts.length) await db.conflicts.bulkAdd(conflicts);
+  for (const c of result.conflicts) {
+    await db.records.put({ id: `cf:${crypto.randomUUID()}`, _c: 'conflicts', _ca: now, _ua: now, _dirty: 1, _base: null, recordId: remote.id, c: remote.c, field: c.field, kept: c.kept ?? null, discarded: c.discarded ?? null, at: new Date(now).toISOString() });
+  }
   const merged = fromWire({ ...remote, data: result.next });
   if (!same(result.next, remote.data)) {
     merged._dirty = 1;
@@ -67,7 +68,7 @@ async function cycle(db: LifeDB): Promise<boolean> {
   const sent = new Map(dirty.map((r) => [r.id, r._ua]));
   const res = await transport({ cursor, changes: dirty.map(toChange) });
 
-  await db.transaction('rw', db.records, db.meta, db.conflicts, async () => {
+  await db.transaction('rw', db.records, db.meta, async () => {
     for (const applied of res.applied) {
       const local = await db.records.get(applied.id);
       if (!local || local._ua === sent.get(applied.id)) {
@@ -83,12 +84,6 @@ async function cycle(db: LifeDB): Promise<boolean> {
         const { _dirty: _, ...rest } = local;
         await db.records.put({ ...rest, _rejected: rejected.reason } as Rec);
       }
-    }
-    if (res.conflicts.length) {
-      const now = Date.now();
-      await db.conflicts.bulkAdd(
-        res.conflicts.map((c) => ({ id: c.id, c: c.c, field: c.field, kept: c.kept, discarded: c.discarded, loser: c.loser === 'patch' ? ('local' as const) : ('remote' as const), at: now })),
-      );
     }
     for (const remote of res.records) await applyRemote(db, remote);
     await db.meta.put({ key: 'cursor', value: res.cursor });

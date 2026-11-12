@@ -8,7 +8,7 @@ export interface SearchHit {
   score: number;
 }
 
-const HIDDEN = new Set(['settings', 'modulePrefs', 'activity', 'noteVersions', 'habitLogs', 'workspaces', 'dashboards', 'waterLogs', 'focusSessions']);
+const HIDDEN = new Set(['conflicts', 'settings', 'modulePrefs', 'activity', 'noteVersions', 'habitLogs', 'workspaces', 'dashboards', 'waterLogs', 'focusSessions']);
 
 /** Score a record against query terms: every term must match; title matches rank above body matches. */
 export function scoreRecord(rec: Rec, terms: string[]): number {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { applyPatch, type Fields } from '@/core/sync/merge';
 import {
   COLLECTION_NAME, MAX_RECORD_BYTES, type Change, type SyncResponse, type WireConflict, type WireRecord,
@@ -159,6 +160,17 @@ export async function sync(userId: string, cursor: number, changes: Change[], pu
               applied.push(wire(model, saved));
             }
           }
+        }
+        // Conflict notices are stored as records of their own, so every device of the account sees them —
+        // including the device whose value was replaced.
+        for (const c of conflicts) {
+          seq += BigInt(1);
+          await tx.record.create({
+            data: {
+              id: `cf:${randomUUID()}`, userId, seq, collection: 'conflicts',
+              extra: { recordId: c.id, c: c.c, field: c.field, kept: c.kept ?? null, discarded: c.discarded ?? null, at: new Date(now).toISOString() },
+            },
+          });
         }
         if (seq !== locked[0].syncSeq) await tx.user.update({ where: { id: userId }, data: { syncSeq: seq } });
       },

@@ -39,6 +39,8 @@ export async function register(req: Request): Promise<Response> {
 export async function login(req: Request): Promise<Response> {
   const body = await readBody(req, z.object({ email, password: z.string().max(200), deviceName }));
   await rateLimit(`login:${clientIp(req)}:${body.email}`, 10, 900);
+  // Per-account ceiling that holds even if an attacker rotates addresses.
+  await rateLimit(`login-account:${body.email}`, 50, 3600);
   const user = await db().user.findUnique({ where: { email: body.email }, include: { profile: true } });
   const ok = await verifySecret(body.password, user?.passwordHash);
   if (!user || !ok) fail(401, 'bad_credentials', 'Incorrect e-mail or password.');

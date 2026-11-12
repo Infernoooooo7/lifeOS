@@ -76,7 +76,7 @@ describe('cross-device synchronisation', () => {
     for (const db of [phone, pc]) {
       expect(await db.records.get(note.id)).toMatchObject({ title: 'Trip ideas', content: 'Goa, Hampi, Coorg', pinned: true });
     }
-    expect(await phone.conflicts.count()).toBe(0);
+    expect(await phone.records.where('_c').equals('conflicts').count()).toBe(0);
   });
 
   it('records a visible conflict when both devices change the same field, and both converge', async () => {
@@ -91,9 +91,12 @@ describe('cross-device synchronisation', () => {
     await syncDevice(pc);
     expect((await pc.records.get(note.id))!.content).toBe('pc version');
     expect((await phone.records.get(note.id))!.content).toBe('pc version');
-    const conflicts = await phone.conflicts.toArray();
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]).toMatchObject({ id: note.id, field: 'content', kept: 'pc version', discarded: 'phone version', loser: 'local' });
+    // the notice is a synced record, so both devices — including the one whose text won — can see it
+    for (const db of [phone, pc]) {
+      const conflicts = await db.records.where('_c').equals('conflicts').toArray();
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0]).toMatchObject({ recordId: note.id, field: 'content', kept: 'pc version', discarded: 'phone version' });
+    }
   });
 
   it('replicates deletions and keeps edits made while a push was in flight', async () => {

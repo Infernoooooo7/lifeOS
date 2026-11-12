@@ -2,9 +2,9 @@ import type { Fields } from '@/core/sync/merge';
 import { fieldsOf, getDb, searchText, type Rec } from './db';
 
 /** Collections that are not scoped to a workspace. */
-export const GLOBAL_COLLECTIONS = new Set(['workspaces', 'settings', 'modulePrefs', 'notifications']);
+export const GLOBAL_COLLECTIONS = new Set(['workspaces', 'settings', 'modulePrefs', 'notifications', 'conflicts']);
 /** Collections whose writes are bookkeeping and should not appear in the activity feed. */
-const QUIET = new Set(['activity', 'notifications', 'settings', 'modulePrefs', 'noteVersions', 'habitLogs', 'waterLogs', 'focusSessions', 'workspaces']);
+const QUIET = new Set(['activity', 'notifications', 'conflicts', 'settings', 'modulePrefs', 'noteVersions', 'habitLogs', 'waterLogs', 'focusSessions', 'workspaces']);
 
 export type ChangeKind = 'create' | 'update' | 'delete' | 'restore';
 export interface ChangeEvent {

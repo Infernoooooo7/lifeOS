@@ -57,8 +57,19 @@ export function parseCookies(req: Request): Record<string, string> {
   return out;
 }
 
+/**
+ * Client address for rate limiting. Headers set by the hosting platform's edge are preferred because the
+ * left-most X-Forwarded-For entry can be supplied by the client on platforms that append to it.
+ */
 export function clientIp(req: Request): string {
-  return (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || req.headers.get('x-real-ip') || 'local';
+  const h = req.headers;
+  return (
+    h.get('cf-connecting-ip') ||
+    h.get('x-real-ip') ||
+    h.get('x-vercel-forwarded-for')?.split(',')[0].trim() ||
+    (h.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
+    'local'
+  ).slice(0, 64);
 }
 
 /** Public origin of this deployment as seen by the browser. */

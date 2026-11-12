@@ -197,8 +197,8 @@ export function Menu({ trigger, items, align = 'end', label }: { trigger: (props
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<CSSProperties>({ visibility: 'hidden' });
 
-  useLayoutEffect(() => {
-    if (!open || !anchor.current || !panel.current) return;
+  const place = useCallback(() => {
+    if (!anchor.current || !panel.current) return;
     const a = anchor.current.getBoundingClientRect();
     const p = panel.current.getBoundingClientRect();
     const vw = window.innerWidth;
@@ -208,7 +208,11 @@ export function Menu({ trigger, items, align = 'end', label }: { trigger: (props
     const below = a.bottom + 6;
     const top = below + p.height > vh - 8 ? Math.max(8, a.top - p.height - 6) : below;
     setPos({ left, top, visibility: 'visible' });
-  }, [open, align, items.length]);
+  }, [align]);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place, items.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -217,17 +221,22 @@ export function Menu({ trigger, items, align = 'end', label }: { trigger: (props
       if (e instanceof MouseEvent && (panel.current?.contains(e.target as Node) || anchor.current?.contains(e.target as Node))) return;
       setOpen(false);
     };
+    // The menu follows its trigger when the page scrolls or resizes instead of vanishing.
+    const follow = (e: Event) => {
+      if (e.target instanceof Node && panel.current?.contains(e.target)) return;
+      place();
+    };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);
-    window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', follow);
+    window.addEventListener('scroll', follow, true);
     return () => {
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
-      window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', follow);
+      window.removeEventListener('scroll', follow, true);
     };
-  }, [open]);
+  }, [open, place]);
 
   // Menus opened from inside a <dialog> must render inside it to stay in the top layer.
   const host = open ? (anchor.current?.closest('dialog') ?? document.body) : null;

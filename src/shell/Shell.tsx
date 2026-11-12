@@ -438,9 +438,11 @@ function moduleComponent(id: string): ComponentType<ModuleProps> | null {
   return lazyCache.get(id)!;
 }
 
+let startChecked = false;
+
 function ModuleHost() {
   const segments = useSegments();
-  const [prefs] = usePrefs();
+  const [prefs, , prefsLoaded] = usePrefs();
   const enabled = useEnabledModules();
   const id = segments[0] ?? 'home';
   const def = moduleDef(id);
@@ -449,13 +451,13 @@ function ModuleHost() {
   useEffect(() => {
     if (def && !def.core && enabled.has(id)) void setModule(id, { lastUsedAt: new Date().toISOString() });
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Home opens the 3D workspace when Spatial is the preferred mode.
+  // When LIFEOS starts on Home and Spatial is the preferred mode, open the 3D workspace — once, at start-up only,
+  // so that going Home later (or choosing Standard mode) is never bounced back.
   useEffect(() => {
-    if (segments.length === 0 && prefs.mode === 'spatial' && enabled.has('spatial') && sessionStorage.getItem('lifeos.homeRedirect') !== '1') {
-      sessionStorage.setItem('lifeos.homeRedirect', '1');
-      navigate('/spatial', { replace: true });
-    }
-  }, [segments.length, prefs.mode, enabled]);
+    if (!prefsLoaded || startChecked) return;
+    startChecked = true;
+    if (segments.length === 0 && prefs.mode === 'spatial' && enabled.has('spatial')) navigate('/spatial', { replace: true });
+  }, [prefsLoaded, segments.length, prefs.mode, enabled]);
 
   if (!def || !Cmp) return <div className="p-6"><Empty icon="search" title="Page not found" hint="That address does not match any module." action={<Button onClick={() => navigate('/')}>Go home</Button>} /></div>;
   if (!enabled.has(id)) {

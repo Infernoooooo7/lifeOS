@@ -347,24 +347,24 @@ function SyncSection() {
         {conflicts.length === 0 ? <p className="text-sm text-faint">No conflicts. When two devices change the same field, both values show up here.</p> : (
           <ul className="space-y-2">
             {conflicts.slice(0, 50).map((c) => (
-              <li key={c.key} className={cx('rounded-xl border border-line p-3', c.resolved && 'opacity-55')}>
-                <div className="flex flex-wrap items-center gap-2 text-sm"><span className="chip">{collectionDef(c.c).one}</span><span className="font-medium">{c.field}</span><span className="flex-1" /><span className="text-xs text-faint">{timeAgo(c.at)}</span></div>
+              <li key={c.id} className={cx('rounded-xl border border-line p-3', c.resolved && 'opacity-55')}>
+                <div className="flex flex-wrap items-center gap-2 text-sm"><span className="chip">{collectionDef(String(c.c)).one}</span><span className="font-medium">{String(c.field)}</span><span className="flex-1" /><span className="text-xs text-faint">{timeAgo(c._ca)}</span></div>
                 <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-                  <div className="rounded-lg bg-good/10 p-2"><div className="eyebrow !text-good">Kept ({c.loser === 'local' ? 'other device' : 'this device'})</div><div className="mt-0.5 break-words">{show(c.kept)}</div></div>
-                  <div className="rounded-lg bg-surface-2 p-2"><div className="eyebrow">Replaced ({c.loser === 'local' ? 'this device' : 'other device'})</div><div className="mt-0.5 break-words">{show(c.discarded)}</div></div>
+                  <div className="rounded-lg bg-good/10 p-2"><div className="eyebrow !text-good">Kept (most recent change)</div><div className="mt-0.5 break-words">{show(c.kept)}</div></div>
+                  <div className="rounded-lg bg-surface-2 p-2"><div className="eyebrow">Replaced</div><div className="mt-0.5 break-words">{show(c.discarded)}</div></div>
                 </div>
                 {!c.resolved && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="sm" icon="undo" onClick={async () => { const rec = await getRec(c.id); if (!rec) return toast('That item no longer exists.'); await update(c.id, { [c.field]: c.discarded ?? null }, { silent: true }); await getDb().conflicts.update(c.key!, { resolved: 1 }); toast('Switched to the other value', { tone: 'good' }); }}>Use the replaced value instead</Button>
-                    <Button size="sm" variant="ghost" icon="check" onClick={() => void getDb().conflicts.update(c.key!, { resolved: 1 })}>Keep as is</Button>
-                    <Button size="sm" variant="ghost" onClick={async () => { const rec = await getRec(c.id); if (rec) openHit(rec); }}>Open item</Button>
+                    <Button size="sm" icon="undo" onClick={async () => { const rec = await getRec(String(c.recordId)); if (!rec) return toast('That item no longer exists.'); await update(rec.id, { [String(c.field)]: c.discarded ?? null }, { silent: true }); await update(c.id, { resolved: true }, { silent: true }); toast('Switched to the other value', { tone: 'good' }); }}>Use the replaced value instead</Button>
+                    <Button size="sm" variant="ghost" icon="check" onClick={() => void update(c.id, { resolved: true }, { silent: true })}>Keep as is</Button>
+                    <Button size="sm" variant="ghost" onClick={async () => { const rec = await getRec(String(c.recordId)); if (rec) openHit(rec); }}>Open item</Button>
                   </div>
                 )}
               </li>
             ))}
           </ul>
         )}
-        {conflicts.some((c) => c.resolved) && <Button className="mt-2" size="sm" variant="ghost" onClick={() => void getDb().conflicts.filter((c) => !!c.resolved).delete()}>Clear reviewed</Button>}
+        {conflicts.some((c) => c.resolved) && <Button className="mt-2" size="sm" variant="ghost" onClick={async () => { for (const c of conflicts.filter((x) => x.resolved)) await remove(c.id, { silent: true }); }}>Clear reviewed</Button>}
       </Card>
       {rejected.length > 0 && <Card title="Items the server could not accept" tone="danger"><ul className="text-sm">{rejected.map((r) => <li key={r.id} className="flex justify-between gap-2 py-1"><span className="truncate">{collectionDef(r._c).one}: {r.title}</span><span className="text-bad">{r.reason}</span></li>)}</ul><p className="mt-2 text-xs text-faint">They stay on this device. Editing an item sends it again.</p></Card>}
     </>

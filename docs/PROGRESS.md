@@ -17,7 +17,9 @@ Working notes so the build can resume if interrupted. Newest state at the top of
 - [x] Collection engine: src/ui/CollectionView.tsx, RecordEditor.tsx, fields.tsx, MonthGrid.tsx
 - [x] B2. App shell (src/shell/*): boot + auth gate, sidebar, top bar, mobile nav, launcher, context panel, onboarding, palette, capture, notifications
 - [x] Modules done: all except spatial (home, tasks, calendar, projects, notes, habits, goals, finance, learning, health, journal, focus, lifestyle x6, utilities, automation, insights, marketplace, settings)
-- [ ] src/modules/spatial.tsx (3D workspace) ← NEXT. Then: public/sw.js + icons (scripts/gen-icons.mjs), landing page, full visual pass with scripts/dev/shot.mjs, e2e tests, docs, registry honesty pass, deploy.
+- [x] Spatial 3D module, service worker (src/app/sw.js/route.ts), icons, landing page, visual tour (scripts/dev/tour.mjs)
+- [x] E2E suites written: tests/e2e/{workflows,layout,sync,pwa,spatial}.spec.ts (run: npm run build && npm run test:e2e)
+- [ ] NEXT: run full e2e on desktop + phone and fix; then docs (README, RESEARCH, ARCHITECTURE, FEATURES generated, TESTING, LICENSES, ROADMAP, DEPLOYMENT), prisma/seed.ts + scripts/gen-feature-docs.ts, registry honesty pass, deploy (Render MCP is connected; Vercel is not).
 - [ ] Marketplace module UI
 - [ ] D. Core modules: dashboard, tasks, calendar, projects, notes, habits, finance, goals
 - [ ] E. Extended modules: learning, health, journal, focus, shopping, travel, files, entertainment, digital life, admin, utilities, automation, insights

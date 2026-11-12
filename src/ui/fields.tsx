@@ -42,7 +42,7 @@ function SelectInput({ def, value, onChange, rec }: { def: FieldDef; value: unkn
   const numeric = opts.some((o) => typeof o.value === 'number');
   return (
     <select
-      className="input" value={value == null ? '' : String(value)}
+      className="input" aria-label={def.label} value={value == null ? '' : String(value)}
       onChange={async (e) => {
         const v = e.target.value;
         if (v === '__add') {
@@ -68,7 +68,7 @@ function RelationInput({ def, value, onChange, exclude }: { def: FieldDef; value
   const rows = useRecords(def.rel!);
   const options = useMemo(() => rows.filter((r) => r.id !== exclude && !r.archived).map((r) => ({ id: r.id, label: titleOf(r) })).sort((a, b) => a.label.localeCompare(b.label)), [rows, exclude]);
   return (
-    <select className="input" value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value || null)}>
+    <select className="input" aria-label={def.label} value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">None</option>
       {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
     </select>
@@ -92,7 +92,7 @@ function RelationsInput({ def, value, onChange, exclude }: { def: FieldDef; valu
           ))}
         </div>
       )}
-      <select className="input" value="" onChange={(e) => e.target.value && onChange([...ids, e.target.value])}>
+      <select className="input" aria-label={`Add to ${def.label}`} value="" onChange={(e) => e.target.value && onChange([...ids, e.target.value])}>
         <option value="">Add…</option>
         {available.map((r) => <option key={r.id} value={r.id}>{titleOf(r)}</option>)}
       </select>
