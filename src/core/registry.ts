@@ -451,6 +451,7 @@ export const MODULES: ModuleDef[] = [
       ['import-bank', 'Import bank statements', 'OFX, QFX and QIF statements become transactions with suggested categories; overlapping downloads do not duplicate.', 'implemented', undefined, ['finance']],
       ['import-safe', 'Safe re-import', 'Imported items keep their source identity: importing again adds only what is new, and never overwrites your changes unless you ask.'],
       ['search', 'Universal search', 'Search every module at once, offline.'],
+      ['search-typos', 'Typo-tolerant search', 'Finds “metting” and “recieve”: one typo allowed from four letters, two from seven; exact and title matches rank first.'],
       ['palette', 'Command palette', 'Ctrl / ⌘ K to jump anywhere or run an action.'],
       ['capture', 'Quick capture', 'Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere.'],
       ['shortcuts', 'Keyboard shortcuts', 'Navigation and action shortcuts with an in-app cheat sheet.'],

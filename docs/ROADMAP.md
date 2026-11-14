@@ -16,7 +16,7 @@ These are the honest edges of the current release. Each is also labelled in the 
 | Sync | Conflicts on the same field are resolved by device time (the losing value is always kept and restorable). Sync is polling (about 30 s, plus on focus, reconnect and after edits), not real-time push. |
 | Collaboration | Single-user. There is no sharing between accounts. |
 | Password reset by e-mail | Requires a Resend API key on the deployment; otherwise the recovery code is the only reset path. |
-| Search | Substring matching across all text; no typo tolerance or ranking by meaning. |
+| Search | Word and typo-tolerant matching across all text, ranked by where it matches and how recently it changed; no ranking by meaning (synonyms). |
 | Recommendations | Entertainment suggestions come from the user's own library only. |
 | Browsers | Tested in Chromium. Firefox and Safari are expected to work (standard APIs only) but were not tested. |
 | Hosting | The current deployment uses free tiers: the service sleeps when idle and the free database expires after 30 days unless upgraded. |
@@ -40,10 +40,10 @@ The registry is designed for 500+ capabilities; these are the next steps in roug
 **Then**
 - Recurrence exceptions and "nth weekday" rules; drag-to-reschedule in week view.
 - Real-time sync channel (server-sent events) on top of the existing cursor protocol.
-- Full-text index in a web worker; saved searches and filters.
+- Full-text index in a web worker (search already tolerates typos); saved searches and filters.
 - Photo cards for the vision board; image attachments for notes and inventory.
 - Shared workspaces (household budgets, shopping lists, trips) with per-record permissions.
-- Import adapters: Todoist, Notion, Google Keep, bank statement formats (OFX/QIF).
+- More import adapters (Things, TickTick, Evernote ENEX, CSV bank formats per bank).
 - Optional AI assistance with a user-provided key: summarise a week, draft a plan, natural-language capture.
 - Native wrappers (Capacitor) for widgets, share-sheet capture and background sync.
 - Automated accessibility audits (axe) and visual regression tests in CI; Firefox and WebKit test projects.
@@ -51,5 +51,5 @@ The registry is designed for 500+ capabilities; these are the next steps in roug
 
 **Module ideas that fit the registry without architectural change**
 Recipes and meal planning · medication and symptom log · pet care · plant care · vehicle log · reading highlights ·
-people CRM with last-contact reminders · gift planner · chores rota · home energy log · career log and CV builder ·
+gift planner · chores rota · home energy log · career log and CV builder ·
 investment tracker · tax document checklist · language-learning vocabulary · music practice log · packing templates.

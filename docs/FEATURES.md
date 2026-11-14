@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**311 capabilities in 25 modules** — 298 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**312 capabilities in 25 modules** — 299 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -39,7 +39,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 36 | 0 | 1 | 2 |
+| Settings | System | 37 | 0 | 1 | 2 |
 
 ## Home
 
@@ -493,6 +493,7 @@ _Make it yours._ Module id `settings` · always on
 | ✅ | Import bank statements | OFX, QFX and QIF statements become transactions with suggested categories; overlapping downloads do not duplicate. | `platform.import-bank` |
 | ✅ | Safe re-import | Imported items keep their source identity: importing again adds only what is new, and never overwrites your changes unless you ask. | `platform.import-safe` |
 | ✅ | Universal search | Search every module at once, offline. | `platform.search` |
+| ✅ | Typo-tolerant search | Finds “metting” and “recieve”: one typo allowed from four letters, two from seven; exact and title matches rank first. | `platform.search-typos` |
 | ✅ | Command palette | Ctrl / ⌘ K to jump anywhere or run an action. | `platform.palette` |
 | ✅ | Quick capture | Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere. | `platform.capture` |
 | ✅ | Keyboard shortcuts | Navigation and action shortcuts with an in-app cheat sheet. | `platform.shortcuts` |
