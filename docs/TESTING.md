@@ -2,18 +2,32 @@
 
 Everything in this report was executed; nothing is listed as passing that was not run.
 
-## Results (14 November 2026, after the liquid-glass interface update)
+## Results (14 November 2026, after the performance and UI pass)
 
 | Suite | Tool | What it covers | Result |
 | --- | --- | --- | --- |
 | Unit | Vitest | Pure logic in `src/core` | **65 passed** |
 | API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices | **33 passed** |
-| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser | **33 passed** |
+| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser | **33 passed** (whole e2e run: 2.2 min, was 4.1) |
 | End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **19 passed** |
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
 Total: **98** unit/integration tests and **52** end-to-end tests, all passing on the final run.
+
+## Performance (`scripts/dev/perf.mjs`, `scripts/dev/inp.mjs`; Chromium, CPU throttled 4×, sample data)
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Idle frame time, desktop | 118 ms (~8 fps) | 16.7 ms (60 fps) |
+| Scrolling frame time, desktop (avg / p95) | 116 / 133 ms | 19 / 33 ms |
+| Typing in the record editor (worst event) | 384 ms | 40 ms |
+| Typing in quick add | 88 ms | 24 ms |
+| Opening the record editor | 272 ms | 120 ms |
+
+Causes found: an animated, blurred full-screen background forced every glass surface to re-blur each frame; backdrop
+blur on in-page cards, the dialog backdrop and large sheets; one IndexedDB live query per component instead of per
+collection; every editor field re-rendering on each keystroke.
 
 ## How to run
 
@@ -80,7 +94,8 @@ the WebGL scene renders from live data · every view switches · the list panel 
 return to Standard mode · fallback when WebGL is unavailable · on-demand rendering under reduced motion.
 
 **Visual check.** `scripts/dev/tour.mjs` restores sample data through the real import flow and screenshots 31 routes
-on desktop and phone; both tours ran with zero console errors and zero overflow, and the screenshots were reviewed.
+on desktop (1440), tablet (768) and phone (375), dark and light (`THEME=light`); keyboard focus was checked along the
+sidebar; both tours ran with zero console errors and zero overflow, and the screenshots were reviewed.
 
 ## Defects found by testing and fixed
 
@@ -96,6 +111,10 @@ on desktop and phone; both tours ran with zero console errors and zero overflow,
 | Visual tour | Logo gradient vanished when another copy of the logo was hidden | Unique gradient ids |
 | Visual check | The CSS build kept only the `-webkit-` backdrop-filter when both were written, so Chromium showed no blur | Write the standard property only; the build adds the prefix |
 | E2E (phone) | Sheet layout rules also matched menus portalled into a sheet, pushing them off-screen | Sheet rules target a dedicated `sheet-panel` class |
+| Visual review | Sidebar hid modules below the fold with no scroll cue; the active module could be out of view | Visible thin scrollbar, edge fade, active item scrolled into view |
+| Visual review (768 px) | Full sidebar took a third of a tablet screen | Icon rail below 1180 px |
+| Visual review (375 px) | Money figures truncated in three-across stat rows | Figures sized to the card (container query) |
+| Visual review (375 px) | Tab strips cut off with no cue; active tab could be hidden | Edge fade and active tab scrolled into view |
 
 ## Not tested / limits of this run
 

@@ -70,7 +70,9 @@ Every record on a device is one flat object in the `records` table of an Indexed
 ```
 
 - Reads are **live queries** (`useRecords`, `useRecord`), so every view updates when data changes — in this tab,
-  another tab, or after a sync.
+  another tab, or after a sync. Each collection or record has **one shared** Dexie live query, however many components
+  read it: a write re-reads the data once and every reader gets the same array. A query stays subscribed for a minute
+  after its last reader unmounts, so returning to a module shows its data immediately.
 - Writes go through `core/data/store.ts` (`create`, `update`, `remove`, `upsert`). The first edit of a synced record
   snapshots it into `_base`; that snapshot is what makes field-level merging possible.
 - Deletes are **soft** (`deletedAt`): tombstones replicate and double as a trash.
@@ -149,10 +151,15 @@ reference rows of the same user — cross-user access is impossible at the schem
 ## 9. Interface
 
 - **Design tokens** in `src/app/globals.css`: dark and light themes, one accent hue, density scale, widget styles.
-- **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over a slow aurora of the accent
-  hue (plus film grain), backdrop blur + saturation on chrome, widgets and sheets, and a pointer-following sheen
-  (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar, top bar, context panel, phone tab bar and side sheets float as
-  rounded glass panes. `prefers-reduced-transparency` and the Solid / Outline widget styles switch to opaque surfaces.
+- **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over a static aurora of the
+  accent hue (plus a faint grain) and a pointer-following sheen (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar,
+  top bar, context panel, phone tab bar and side sheets float as rounded glass panes. `prefers-reduced-transparency` and
+  the Solid / Outline widget styles switch to opaque surfaces.
+- **Performance rules for the glass** (each measured; see `docs/TESTING.md`): the aurora is never animated or filtered;
+  backdrop blur is used only where content moves underneath (top bar, phone tab bar, menus, toasts, floating bars:
+  `.glass-chrome`, `.glass-float`), never on in-page cards, full-screen dialog backdrops or large sheets.
+- **Narrow layouts:** below 1180 px the sidebar is an icon rail; stat cards size their figures to their own width
+  (container query); scrollable tab and segment strips fade at hidden edges and keep the active item in view.
 - **Desktop:** sidebar, top bar (search, capture, mode switch, sync, notifications, account), main workspace, optional
   context panel. **Phone:** top bar, bottom tab bar with capture, searchable launcher, bottom sheets.
 - **Spatial mode** (`src/modules/spatial.tsx`): React Three Fiber scene built from live data with adaptive quality,
