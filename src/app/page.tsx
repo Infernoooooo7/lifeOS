@@ -17,11 +17,13 @@ export default function Landing() {
   const modules = MODULES.filter((m) => !m.core);
   return (
     <main className="app-canvas min-h-dvh">
-      <header className="mx-auto flex w-full max-w-6xl items-center gap-3 px-5 py-5">
+      <header className="sticky top-0 z-30 mx-auto w-full max-w-6xl px-3 pt-3">
+        <div className="glass-chrome flex items-center gap-3 !rounded-[20px] px-4 py-2.5">
         <Logo size={34} />
         <span className="font-display text-lg font-semibold tracking-wide">LIFEOS</span>
         <span className="flex-1" />
         <a href="/app" className="btn btn-primary">Open LIFEOS</a>
+        </div>
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-10 md:grid-cols-[1.1fr_0.9fr] md:pt-20">
@@ -42,15 +44,15 @@ export default function Landing() {
           <p className="mt-3 text-sm text-faint">No account needed to try it: start on this device, create an account later and keep your data.</p>
         </div>
         <div className="relative mx-auto aspect-square w-full max-w-[420px]" aria-hidden="true">
-          <div className="absolute inset-[8%] rounded-full border border-line" />
-          <div className="absolute inset-[24%] rounded-full border border-line" />
+          <div className="glass absolute inset-[8%] !rounded-full" />
+          <div className="glass absolute inset-[24%] !rounded-full" />
           <div className="absolute inset-[38%] rounded-full bg-gradient-to-br from-cyan to-violet opacity-90 blur-[2px]" />
           <div className="absolute inset-[30%] rounded-full bg-accent opacity-20 blur-2xl" />
           {modules.slice(0, 12).map((m, i) => {
             const angle = (i / 12) * Math.PI * 2;
             const r = i % 2 ? 42 : 26;
             return (
-              <span key={m.id} className="absolute grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl border border-line bg-solid shadow-lg" style={{ left: `${50 + Math.cos(angle) * r}%`, top: `${50 + Math.sin(angle) * r}%`, color: `oklch(0.8 0.13 ${m.hue})` } as CSSProperties}>
+              <span key={m.id} className="tile absolute size-11 -translate-x-1/2 -translate-y-1/2 backdrop-blur-md" style={{ left: `${50 + Math.cos(angle) * r}%`, top: `${50 + Math.sin(angle) * r}%`, "--mh": m.hue } as CSSProperties}>
                 <Icon name={m.icon} size={20} />
               </span>
             );
@@ -70,7 +72,7 @@ export default function Landing() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PILLARS.map((p) => (
             <div key={p.title} className="card">
-              <span className="grid size-10 place-items-center rounded-xl bg-accent-soft text-accent"><Icon name={p.icon} size={19} /></span>
+              <span className="tile size-10 !rounded-xl"><Icon name={p.icon} size={19} /></span>
               <h2 className="mt-3 text-lg font-semibold">{p.title}</h2>
               <p className="mt-1 text-sm text-muted">{p.text}</p>
             </div>
@@ -83,9 +85,9 @@ export default function Landing() {
         <p className="mt-2 max-w-2xl text-muted">Every capability is listed in the in-app Marketplace with an honest status: {counts.implemented} implemented, {counts.partial} partial, {counts.integration} waiting on an integration and {counts.planned} planned.</p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {modules.map((m) => (
-            <div key={m.id} className="card">
+            <div key={m.id} className="card card-hover">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 flex-none place-items-center rounded-xl" style={{ background: `oklch(0.75 0.14 ${m.hue} / 0.15)`, color: `oklch(0.8 0.13 ${m.hue})` }}><Icon name={m.icon} size={19} /></span>
+                <span className="tile size-10 !rounded-xl" style={{ '--mh': m.hue } as CSSProperties}><Icon name={m.icon} size={19} /></span>
                 <div className="min-w-0"><h3 className="truncate font-sans font-semibold tracking-normal">{m.name}</h3><p className="truncate text-sm text-muted">{m.tagline}</p></div>
               </div>
               <p className="mt-3 line-clamp-2 text-sm text-faint">{m.features.filter((f) => f.status === 'implemented').slice(0, 5).map((f) => f.name).join(' · ')}</p>

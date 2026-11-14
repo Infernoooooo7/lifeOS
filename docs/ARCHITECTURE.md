@@ -149,6 +149,10 @@ reference rows of the same user — cross-user access is impossible at the schem
 ## 9. Interface
 
 - **Design tokens** in `src/app/globals.css`: dark and light themes, one accent hue, density scale, widget styles.
+- **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over a slow aurora of the accent
+  hue (plus film grain), backdrop blur + saturation on chrome, widgets and sheets, and a pointer-following sheen
+  (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar, top bar, context panel, phone tab bar and side sheets float as
+  rounded glass panes. `prefers-reduced-transparency` and the Solid / Outline widget styles switch to opaque surfaces.
 - **Desktop:** sidebar, top bar (search, capture, mode switch, sync, notifications, account), main workspace, optional
   context panel. **Phone:** top bar, bottom tab bar with capture, searchable launcher, bottom sheets.
 - **Spatial mode** (`src/modules/spatial.tsx`): React Three Fiber scene built from live data with adaptive quality,

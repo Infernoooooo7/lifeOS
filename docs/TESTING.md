@@ -2,7 +2,7 @@
 
 Everything in this report was executed; nothing is listed as passing that was not run.
 
-## Results (12 November 2026)
+## Results (14 November 2026, after the liquid-glass interface update)
 
 | Suite | Tool | What it covers | Result |
 | --- | --- | --- | --- |
@@ -94,6 +94,8 @@ on desktop and phone; both tours ran with zero console errors and zero overflow,
 | E2E | Rate limiting trusted the left-most `X-Forwarded-For` entry | Platform-set headers are preferred; per-account login ceiling added |
 | Visual tour | Chart axis labels were clipped; the 3D scene was hidden behind its panel | Axis formatter and margins; camera framing follows the panel |
 | Visual tour | Logo gradient vanished when another copy of the logo was hidden | Unique gradient ids |
+| Visual check | The CSS build kept only the `-webkit-` backdrop-filter when both were written, so Chromium showed no blur | Write the standard property only; the build adds the prefix |
+| E2E (phone) | Sheet layout rules also matched menus portalled into a sheet, pushing them off-screen | Sheet rules target a dedicated `sheet-panel` class |
 
 ## Not tested / limits of this run
 

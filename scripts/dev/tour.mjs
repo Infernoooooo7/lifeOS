@@ -1,5 +1,5 @@
 // Visual tour: onboard in local mode, restore the sample backup through the real UI, then screenshot routes.
-// Usage: node scripts/dev/tour.mjs <outDir> <desktop|mobile> [route ...]
+// Usage: [THEME=light|dark] node scripts/dev/tour.mjs <outDir> <desktop|mobile> [route ...]
 import { chromium, devices } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
@@ -22,6 +22,7 @@ await page.getByRole('heading', { name: 'What do you want LIFEOS to help with?' 
 for (const interest of ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth']) await page.locator('section').getByRole('button', { name: interest, exact: true }).click();
 await page.getByRole('button', { name: 'Continue' }).click();
 await page.getByRole('button', { name: 'Continue' }).click();
+if (process.env.THEME) await page.getByRole('button', { name: process.env.THEME, exact: true }).click();
 await page.getByRole('button', { name: 'Start using LIFEOS' }).click();
 await page.getByText(/Welcome to LIFEOS/).waitFor();
 await page.goto(base + '/app/settings/data');
@@ -34,7 +35,7 @@ for (const route of routes) {
   await page.goto(base + route);
   await page.waitForTimeout(route.includes('spatial') ? 3500 : 1100);
   const name = (route.replace('/app', '') || '/home').slice(1).replace(/\//g, '_');
-  await page.screenshot({ path: `${out}/${mode}-${name}.png` });
+  await page.screenshot({ path: `${out}/${mode}${process.env.THEME ? '-' + process.env.THEME : ''}-${name}.png` });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   const text = await page.evaluate(() => document.body.innerText.slice(0, 60000));
   report.push({ route, overflow, problem: /ran into a problem|couldn’t load|not available offline/.test(text) ? 'ERROR SCREEN' : '' });

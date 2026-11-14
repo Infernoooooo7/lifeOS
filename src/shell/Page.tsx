@@ -27,11 +27,11 @@ export function Page<T extends string>({ module, title, subtitle, actions, tabs,
   return (
     <div className={cx('mx-auto w-full px-4 pb-28 pt-4 md:px-6 md:pb-10 md:pt-6', wide ? 'max-w-[1500px]' : 'max-w-6xl')} style={{ '--mh': def?.hue ?? 215 } as CSSProperties}>
       <header className="mb-4 flex flex-wrap items-center gap-3">
-        <span className="grid size-11 flex-none place-items-center rounded-[14px] border border-line" style={{ background: 'oklch(0.75 0.14 var(--mh) / 0.14)', color: 'oklch(0.8 0.13 var(--mh))' }}>
+        <span className="tile size-12">
           <Icon name={def?.icon ?? 'circle'} size={21} />
         </span>
         <div className="min-w-0 flex-1 basis-40">
-          <h1 className="truncate text-[1.45rem] font-semibold leading-tight">{title ?? def?.name}</h1>
+          <h1 className="truncate text-[1.55rem] font-semibold leading-tight tracking-tight">{title ?? def?.name}</h1>
           {(subtitle ?? def?.tagline) && <p className="truncate text-sm text-muted">{subtitle ?? def?.tagline}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

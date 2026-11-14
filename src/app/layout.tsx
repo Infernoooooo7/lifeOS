@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { GlassFx } from '@/ui/GlassFx';
 
 export const metadata: Metadata = {
   title: { default: 'LIFEOS — The Personal Operating System', template: '%s · LIFEOS' },
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <GlassFx />
+      </body>
     </html>
   );
 }

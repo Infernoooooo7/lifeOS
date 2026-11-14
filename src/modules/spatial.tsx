@@ -449,7 +449,7 @@ export default function Spatial(_: ModuleProps) {
   if (!supported) return fallback;
 
   return (
-    <div className="relative h-[calc(100dvh-57px-62px-env(safe-area-inset-bottom))] min-h-[420px] w-full overflow-hidden md:h-[calc(100dvh-57px)]" data-testid="spatial-root">
+    <div className="relative h-[calc(100dvh-60px-84px-env(safe-area-inset-bottom))] min-h-[420px] w-full overflow-hidden md:h-[calc(100dvh-62px)]" data-testid="spatial-root">
       <SceneBoundary fallback={fallback}>
         <Canvas
           dpr={dprCap ? [1, dprCap] : q.dpr} frameloop={reduced ? 'demand' : 'always'} camera={{ position: CAMERA.overview.pos, fov: 50, near: 0.1, far: 120 }}

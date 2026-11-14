@@ -507,7 +507,7 @@ export function CollectionView({ collection, filter, defaults, views: viewsProp,
       )}
       {body}
       {selecting && (
-        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mx-auto mt-3 flex w-fit max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-line-strong bg-solid p-2 shadow-2xl md:bottom-4">
+        <div className="glass sticky bottom-[calc(88px+env(safe-area-inset-bottom))] z-20 mx-auto mt-3 flex w-fit max-w-full flex-wrap items-center justify-center gap-1.5 !rounded-[20px] p-2 md:bottom-4">
           <span className="px-2 text-sm font-medium">{selected.size} selected</span>
           <Button size="sm" variant="ghost" onClick={() => setSelected(new Set(selected.size === records.length ? [] : records.map((r) => r.id)))}>{selected.size === records.length ? 'None' : 'All'}</Button>
           {boardField && <Menu label="Set status" items={boardOpts.map((o) => ({ label: o.label, onClick: () => void bulk({ [boardField.k]: o.value, ...(collection === 'tasks' ? { completedAt: o.value === 'done' ? new Date().toISOString() : null } : {}) }) }))} trigger={(p) => <Button size="sm" disabled={!selected.size} {...p}>{boardField.label}</Button>} />}

@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
-import { Component, Suspense, lazy, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ComponentType, type ReactNode } from 'react';
 import { ACCENTS, navigate, openCapture, openEditor, useApp, useSegments, type Prefs } from '@/core/app';
 import { useEnabledModules, useModules, usePrefs, useRecords, useSync, setModule, type ModuleState } from '@/core/data/hooks';
 import { queryClient } from '@/core/data/server';
@@ -76,10 +76,9 @@ function NavItem({ id, name, icon, active, collapsed, badge }: { id: string; nam
         e.preventDefault();
         navigate(id === 'home' ? '/' : `/${id}`);
       }}
-      className={cx('group relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[0.92rem] transition-colors', collapsed && 'justify-center px-0', active ? 'bg-accent-soft font-medium text-text' : 'text-muted hover:bg-surface-2 hover:text-text')}
+      className={cx('nav-item group', collapsed && 'justify-center !px-0')}
     >
-      {active && <span className="absolute -left-2 top-2 h-6 w-1 rounded-full bg-accent" />}
-      <Icon name={icon} size={18} className={active ? 'text-accent' : ''} />
+      <Icon name={icon} size={18} className={cx('flex-none transition-transform group-hover:scale-110', active && 'text-accent drop-shadow-[0_0_6px_var(--accent)]')} />
       {!collapsed && <span className="min-w-0 flex-1 truncate">{name}</span>}
       {!collapsed && badge ? <span className="chip h-5 px-1.5 text-[0.68rem]">{badge}</span> : null}
     </a>
@@ -107,8 +106,8 @@ function WorkspaceSwitcher({ collapsed }: { collapsed?: boolean }) {
         { label: 'Manage workspaces', icon: 'settings' as const, onClick: () => navigate('/settings/workspaces') },
       ]}
       trigger={(p) => (
-        <button type="button" {...p} className={cx('flex h-10 w-full items-center gap-2.5 rounded-[10px] border border-line bg-surface px-2.5 text-left text-sm hover:bg-surface-2', collapsed && 'justify-center px-0')} aria-label={`Workspace: ${current.name}`}>
-          <span className="grid size-6 flex-none place-items-center rounded-md text-[0.7rem] font-bold text-accent-ink" style={{ background: current.color ?? 'var(--accent)' }}>{current.name.slice(0, 1).toUpperCase()}</span>
+        <button type="button" {...p} className={cx('glass flex h-11 w-full items-center gap-2.5 !rounded-[14px] px-2.5 text-left text-sm', collapsed && 'justify-center px-0')} aria-label={`Workspace: ${current.name}`}>
+          <span className="grid size-7 flex-none place-items-center rounded-[9px] text-[0.72rem] font-bold text-accent-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_4px_12px_-4px_var(--accent)]" style={{ background: current.color ?? 'linear-gradient(160deg, var(--accent), var(--accent-strong))' }}>{current.name.slice(0, 1).toUpperCase()}</span>
           {!collapsed && <><span className="min-w-0 flex-1 truncate font-medium">{current.name}</span><Icon name="chevronDown" size={14} className="text-faint" /></>}
         </button>
       )}
@@ -122,23 +121,25 @@ function Sidebar() {
   const active = useSegments()[0] ?? 'home';
   const collapsed = prefs.sidebarCollapsed;
   return (
-    <aside className={cx('no-print sticky top-0 hidden h-dvh flex-none flex-col border-r border-line bg-raised/60 backdrop-blur-xl transition-[width] md:flex', collapsed ? 'w-[68px]' : 'w-[244px]')} aria-label="Primary">
-      <div className={cx('flex h-14 flex-none items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
+    <aside className={cx('no-print sticky top-0 z-20 hidden h-dvh flex-none py-2.5 pl-2.5 transition-[width] duration-300 md:flex', collapsed ? 'w-[82px]' : 'w-[258px]')} aria-label="Primary">
+      <div className="glass-chrome flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className={cx('flex h-[60px] flex-none items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
         <Logo size={30} />
         {!collapsed && <span className="font-display text-[1.05rem] font-semibold tracking-wide">LIFEOS</span>}
       </div>
       <div className="px-3 pb-2"><WorkspaceSwitcher collapsed={collapsed} /></div>
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
+      <nav className="no-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-1.5">
         <NavItem id="home" name="Home" icon="home" active={active === 'home'} collapsed={collapsed} />
         {nav.map((m) => <NavItem key={m.def.id} id={m.def.id} name={m.def.name} icon={m.def.icon} active={active === m.def.id} collapsed={collapsed} />)}
       </nav>
-      <div className="space-y-0.5 border-t border-line p-3">
+      <div className="space-y-1 border-t border-[var(--glass-line)] p-3">
         <NavItem id="marketplace" name="Marketplace" icon="store" active={active === 'marketplace'} collapsed={collapsed} />
         <NavItem id="settings" name="Settings" icon="settings" active={active === 'settings'} collapsed={collapsed} />
-        <button type="button" onClick={() => setPrefs({ sidebarCollapsed: !collapsed })} className={cx('flex h-9 w-full items-center gap-3 rounded-[10px] px-3 text-sm text-faint hover:bg-surface-2 hover:text-text', collapsed && 'justify-center px-0')} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        <button type="button" onClick={() => setPrefs({ sidebarCollapsed: !collapsed })} className={cx('flex h-9 w-full items-center gap-3 rounded-[12px] px-3 text-sm text-faint transition-colors hover:bg-surface-2 hover:text-text', collapsed && 'justify-center px-0')} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={16} />
           {!collapsed && 'Collapse'}
         </button>
+      </div>
       </div>
     </aside>
   );
@@ -161,7 +162,7 @@ export function SyncBadge({ compact }: { compact?: boolean }) {
   const s = sync.conflicts > 0 && state === 'idle' ? { icon: 'warning' as IconName, label: `${sync.conflicts} conflict${sync.conflicts === 1 ? '' : 's'}`, tone: 'text-warn' } : map[state];
   const label = !online && sync.status === 'local' ? 'Offline · on this device' : s.label;
   return (
-    <button type="button" onClick={() => navigate('/settings/sync')} title={`${label}${sync.lastSyncAt ? ` · last sync ${timeAgo(sync.lastSyncAt)}` : ''}`} aria-label={`Sync status: ${label}`} data-sync={state} data-pending={sync.pending} className={cx('inline-flex h-9 flex-none items-center gap-1.5 rounded-[10px] px-2 text-[0.8rem] hover:bg-surface-2', s.tone)}>
+    <button type="button" onClick={() => navigate('/settings/sync')} title={`${label}${sync.lastSyncAt ? ` · last sync ${timeAgo(sync.lastSyncAt)}` : ''}`} aria-label={`Sync status: ${label}`} data-sync={state} data-pending={sync.pending} className={cx('inline-flex h-9 flex-none items-center gap-1.5 rounded-[12px] px-2 text-[0.8rem] transition-colors hover:bg-surface-2', s.tone)}>
       <Icon name={s.icon} size={16} className={state === 'syncing' ? 'animate-[spin_1.2s_linear_infinite]' : ''} />
       {!compact && <span className="max-lg:hidden">{label}</span>}
     </button>
@@ -199,7 +200,7 @@ function ProfileMenu() {
           : { label: 'Create account or sign in', icon: 'user', onClick: () => { writeIdentity(null); window.location.href = '/app'; } },
       ]}
       trigger={(p) => (
-        <button type="button" {...p} aria-label={`Account menu for ${name}`} className="grid size-9 flex-none place-items-center rounded-full bg-gradient-to-br from-cyan to-violet text-sm font-bold text-[#0b0d12]">
+        <button type="button" {...p} aria-label={`Account menu for ${name}`} className="grid size-9 flex-none place-items-center rounded-full bg-gradient-to-br from-cyan to-violet text-sm font-bold text-[#0b0d12] shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_0_0_2px_var(--glass-line),0_6px_16px_-6px_var(--violet)] transition-transform active:scale-90">
           {name.slice(0, 1).toUpperCase()}
         </button>
       )}
@@ -212,7 +213,7 @@ function FocusChip() {
   const timer = useFocus();
   if (timer.phase === 'idle') return null;
   return (
-    <button type="button" onClick={() => navigate('/focus')} aria-label={`${timer.phase === 'break' ? 'Break' : 'Focus'} timer, ${fmtClock(msLeft(timer))} left`} className={cx('num inline-flex h-9 flex-none items-center gap-1.5 rounded-[10px] px-2.5 text-sm font-medium', timer.phase === 'break' ? 'bg-good/15 text-good' : 'bg-accent-soft text-accent')}>
+    <button type="button" onClick={() => navigate('/focus')} aria-label={`${timer.phase === 'break' ? 'Break' : 'Focus'} timer, ${fmtClock(msLeft(timer))} left`} className={cx('num chip !h-9 flex-none !rounded-[12px] !px-2.5 !text-sm', timer.phase === 'break' ? '!text-good' : 'chip-accent')}>
       <Icon name={timer.pausedLeft !== null ? 'pause' : 'timer'} size={15} />{fmtClock(msLeft(timer))}
     </button>
   );
@@ -224,11 +225,11 @@ function TopBar({ title }: { title: string }) {
   const active = useSegments()[0] ?? 'home';
   const spatialOn = useEnabledModules().has('spatial');
   return (
-    <header className="no-print safe-top sticky top-0 z-30 flex-none border-b border-line bg-bg/75 backdrop-blur-xl">
-      <div className="flex h-14 items-center gap-1.5 px-3 md:px-5">
+    <header className="no-print safe-top sticky top-0 z-30 flex-none px-2 pt-2 md:px-3 md:pt-2.5">
+      <div className="glass-chrome flex h-[52px] items-center gap-1.5 !rounded-[18px] px-2 md:px-3">
         <span className="md:hidden"><Logo size={28} /></span>
         <h2 className="min-w-0 flex-1 truncate pl-1 font-display text-[1.02rem] font-semibold md:hidden">{title}</h2>
-        <button type="button" onClick={() => useApp.setState({ palette: true })} className="hidden h-9 min-w-40 max-w-md flex-[4] items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-left text-sm text-faint hover:border-line-strong md:flex" aria-label="Search or run a command">
+        <button type="button" onClick={() => useApp.setState({ palette: true })} className="input hidden !min-h-9 min-w-40 max-w-md flex-[4] items-center gap-2 !rounded-[12px] !py-0 text-left text-sm text-faint hover:border-[var(--line-strong)] md:flex" aria-label="Search or run a command">
           <Icon name="search" size={16} />
           <span className="flex-1 truncate">Search or jump to…</span>
           <kbd className="kbd">Ctrl K</kbd>
@@ -236,11 +237,11 @@ function TopBar({ title }: { title: string }) {
         <span className="hidden flex-1 md:block" />
         <Button variant="primary" size="sm" icon="plus" className="max-md:hidden" onClick={() => openCapture()}>Capture</Button>
         {spatialOn && (
-          <div className="hidden items-center gap-0.5 rounded-[10px] border border-line p-0.5 lg:flex" role="group" aria-label="Interface mode">
+          <div className="seg hidden lg:flex" role="group" aria-label="Interface mode">
             {(['standard', 'spatial'] as const).map((mode) => {
               const on = mode === 'spatial' ? active === 'spatial' : active !== 'spatial';
               return (
-                <button key={mode} type="button" aria-pressed={on} onClick={() => { setPrefs({ mode }); navigate(mode === 'spatial' ? '/spatial' : '/'); }} className={cx('inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium', on ? 'bg-surface-3 text-text' : 'text-muted hover:text-text')}>
+                <button key={mode} type="button" aria-pressed={on} onClick={() => { setPrefs({ mode }); navigate(mode === 'spatial' ? '/spatial' : '/'); }} className="seg-item h-7 !text-xs">
                   <Icon name={mode === 'spatial' ? 'orbit' : 'dashboard'} size={14} />{mode === 'spatial' ? 'Spatial' : 'Standard'}
                 </button>
               );
@@ -252,7 +253,7 @@ function TopBar({ title }: { title: string }) {
         <SyncBadge />
         <span className="relative">
           <IconButton icon="bell" label={`Notifications${unread ? `, ${unread} unread` : ''}`} onClick={() => useApp.setState({ notifications: true })} />
-          {unread > 0 && <span className="pointer-events-none absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.62rem] font-bold text-accent-ink">{unread > 9 ? '9+' : unread}</span>}
+          {unread > 0 && <span className="pointer-events-none absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[0.62rem] font-bold text-accent-ink shadow-[0_0_10px_-1px_var(--accent)]">{unread > 9 ? '9+' : unread}</span>}
         </span>
         <IconButton icon="panelRight" label="Toggle context panel" active={prefs.rightPanel} className="max-xl:hidden" onClick={() => setPrefs({ rightPanel: !prefs.rightPanel })} />
         <ProfileMenu />
@@ -301,7 +302,8 @@ function ContextPanel() {
   const priorities = useMemo(() => tasks.filter((t) => isOpen(t as TaskLike) && !t.parentId && (isOverdue(t as TaskLike) || (t.priority ?? 0) >= 2 || (t.dueAt && parseDate(t.dueAt)! <= new Date(Date.now() + 86_400_000)))).sort(compareTasks).slice(0, 6), [tasks]);
   const reminders = useMemo(() => notifications.filter((n) => !n.readAt).sort((a, b) => b._ca - a._ca).slice(0, 4), [notifications]);
   return (
-    <aside className="no-print sticky top-0 hidden h-dvh w-[300px] flex-none flex-col gap-5 overflow-y-auto border-l border-line bg-raised/40 px-4 pb-6 pt-[72px] xl:flex" aria-label="Context">
+    <aside className="no-print sticky top-0 hidden h-dvh w-[312px] flex-none py-2.5 pr-2.5 xl:flex" aria-label="Context">
+      <div className="glass-chrome no-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-5">
       <PanelSection title="Quick actions">
         <div className="grid grid-cols-2 gap-1.5">
           {prefs.quickActions.filter((k) => QUICK[k]).map((k) => <button key={k} type="button" className="btn btn-sm justify-start" onClick={() => openCapture(k)}><Icon name={QUICK[k].icon} size={15} className="text-accent" />{QUICK[k].label}</button>)}
@@ -338,6 +340,7 @@ function ContextPanel() {
           </button>
         ))}
       </PanelSection>
+      </div>
     </aside>
   );
 }
@@ -351,19 +354,20 @@ function MobileNav() {
   const launcher = useApp((s) => s.launcher);
   const tabs = prefs.mobileTabs.filter((id) => enabled.has(id) && moduleDef(id)).slice(0, 2);
   const item = (id: string, name: string, icon: string, on: boolean, onClick: () => void) => (
-    <button key={id} type="button" onClick={onClick} aria-current={on ? 'page' : undefined} aria-label={name} className={cx('flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[0.66rem] font-medium', on ? 'text-accent' : 'text-muted')}>
+    <button key={id} type="button" onClick={onClick} aria-current={on ? 'page' : undefined} aria-label={name} className={cx('relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[0.66rem] font-medium transition-[color,transform] active:scale-90', on ? 'text-accent' : 'text-muted')}>
+      {on && <span aria-hidden className="absolute inset-x-1 inset-y-1.5 -z-10 rounded-[18px] border border-[oklch(0.8_0.13_var(--accent-h)/0.25)] bg-[linear-gradient(180deg,oklch(0.78_0.14_var(--accent-h)/0.24),oklch(0.7_0.14_var(--accent-h)/0.08))] shadow-[inset_0_1px_0_rgb(255_255_255/0.2)]" />}
       <Icon name={icon} size={21} strokeWidth={on ? 2.3 : 1.9} />
       <span className="max-w-full truncate px-1">{name}</span>
     </button>
   );
   return (
-    <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/85 backdrop-blur-xl md:hidden" aria-label="Primary">
-      <div className="safe-bottom">
-        <div className="flex h-[62px] items-stretch px-1">
+    <nav className="no-print pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),10px)] md:hidden" aria-label="Primary">
+      <div className="glass-chrome pointer-events-auto isolate !rounded-[26px]">
+        <div className="flex h-[64px] items-stretch px-1.5">
           {item('home', 'Home', 'home', active === 'home' && !launcher, () => navigate('/'))}
           {tabs[0] && item(tabs[0], moduleDef(tabs[0])!.name, moduleDef(tabs[0])!.icon, active === tabs[0] && !launcher, () => navigate(`/${tabs[0]}`))}
           <div className="flex flex-1 items-center justify-center">
-            <button type="button" onClick={() => openCapture()} aria-label="Quick capture" className="grid size-[52px] -translate-y-3 place-items-center rounded-full bg-accent text-accent-ink shadow-[0_8px_24px_-6px_var(--accent)] active:scale-95">
+            <button type="button" onClick={() => openCapture()} aria-label="Quick capture" className="btn-primary grid size-[50px] place-items-center rounded-full border transition-transform duration-200 ease-[cubic-bezier(0.3,1.6,0.5,1)] active:scale-90">
               <Icon name="plus" size={26} strokeWidth={2.4} />
             </button>
           </div>
@@ -392,15 +396,15 @@ function Launcher() {
       </div>
       <div className="grid grid-cols-3 gap-2 xs:grid-cols-4">
         {list.map((d) => (
-          <button key={d.id} type="button" onClick={() => navigate(`/${d.id}`)} className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-line bg-surface px-1 py-3 active:bg-surface-2">
-            <span className="grid size-11 place-items-center rounded-[14px]" style={{ background: `oklch(0.75 0.14 ${d.hue} / 0.15)`, color: `oklch(0.8 0.13 ${d.hue})` }}><Icon name={d.icon} size={21} /></span>
+          <button key={d.id} type="button" onClick={() => navigate(`/${d.id}`)} className="glass flex min-w-0 flex-col items-center gap-1.5 !rounded-[20px] px-1 py-3 active:scale-95">
+            <span className="tile size-11 !rounded-[14px]" style={{ '--mh': d.hue } as CSSProperties}><Icon name={d.icon} size={21} /></span>
             <span className="max-w-full truncate px-1 text-[0.74rem] font-medium">{d.name}</span>
           </button>
         ))}
       </div>
       {list.length === 0 && <Empty icon="search" title="No module matches" hint="Switch more modules on in the Marketplace." />}
       {spatial && (
-        <div className="mt-4 flex items-center justify-between rounded-2xl border border-line px-3 py-2.5">
+        <div className="glass mt-4 flex items-center justify-between !rounded-[20px] px-3 py-2.5">
           <span className="text-sm"><span className="block font-medium">Spatial mode</span><span className="text-xs text-faint">Open Home as the 3D workspace</span></span>
           <Button size="sm" icon="orbit" onClick={() => { setPrefs({ mode: 'spatial' }); navigate('/spatial'); }}>{prefs.mode === 'spatial' ? 'Open' : 'Try it'}</Button>
         </div>
@@ -510,7 +514,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
             <p className="mt-1 text-muted">Pick as many as you like. We will switch on only the modules that fit.</p>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {INTERESTS.map((i) => (
-                <button key={i} type="button" aria-pressed={interests.includes(i)} onClick={() => { setChosen(null); setInterests(interests.includes(i) ? interests.filter((x) => x !== i) : [...interests, i]); }} className={cx('rounded-2xl border px-3 py-4 text-left font-medium transition-colors', interests.includes(i) ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-line-strong')}>
+                <button key={i} type="button" aria-pressed={interests.includes(i)} onClick={() => { setChosen(null); setInterests(interests.includes(i) ? interests.filter((x) => x !== i) : [...interests, i]); }} className={cx('glass !rounded-[20px] px-3 py-4 text-left font-medium', interests.includes(i) && '!border-accent !bg-accent-soft shadow-[0_0_0_1px_var(--accent),0_10px_30px_-12px_var(--accent)]')}>
                   {i}
                 </button>
               ))}
@@ -525,8 +529,8 @@ function Onboarding({ onDone }: { onDone: () => void }) {
               {optional.map((m) => {
                 const on = selection.has(m.id);
                 return (
-                  <button key={m.id} type="button" role="switch" aria-checked={on} onClick={() => { const n = new Set(selection); if (on) n.delete(m.id); else n.add(m.id); setChosen(n); }} className={cx('flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors', on ? 'border-accent bg-accent-soft' : 'border-line bg-surface')}>
-                    <span className="grid size-10 flex-none place-items-center rounded-xl" style={{ background: `oklch(0.75 0.14 ${m.hue} / 0.15)`, color: `oklch(0.8 0.13 ${m.hue})` }}><Icon name={m.icon} size={19} /></span>
+                  <button key={m.id} type="button" role="switch" aria-checked={on} onClick={() => { const n = new Set(selection); if (on) n.delete(m.id); else n.add(m.id); setChosen(n); }} className={cx('glass flex items-center gap-3 !rounded-[20px] px-3 py-2.5 text-left', on && '!border-accent !bg-accent-soft')}>
+                    <span className="tile size-10 !rounded-xl" style={{ '--mh': m.hue } as CSSProperties}><Icon name={m.icon} size={19} /></span>
                     <span className="min-w-0 flex-1"><span className="block font-medium">{m.name}</span><span className="block truncate text-xs text-muted">{m.tagline}</span></span>
                     <Icon name={on ? 'checkCircle' : 'circle'} size={20} className={on ? 'text-accent' : 'text-faint'} />
                   </button>
@@ -541,14 +545,14 @@ function Onboarding({ onDone }: { onDone: () => void }) {
             <p className="mt-1 text-muted">Choose a theme and an accent colour.</p>
             <div className="mt-5 grid grid-cols-3 gap-2">
               {(['dark', 'light', 'system'] as const).map((t) => (
-                <button key={t} type="button" aria-pressed={prefs.theme === t} onClick={() => setPrefs({ theme: t })} className={cx('flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 font-medium capitalize', prefs.theme === t ? 'border-accent bg-accent-soft' : 'border-line bg-surface')}>
+                <button key={t} type="button" aria-pressed={prefs.theme === t} onClick={() => setPrefs({ theme: t })} className={cx('glass flex flex-col items-center gap-2 !rounded-[20px] px-3 py-4 font-medium capitalize', prefs.theme === t && '!border-accent !bg-accent-soft')}>
                   <Icon name={t === 'dark' ? 'moon' : t === 'light' ? 'sun' : 'monitor'} size={22} />{t}
                 </button>
               ))}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {ACCENTS.map((a) => (
-                <button key={a.hue} type="button" aria-label={`${a.name} accent`} aria-pressed={prefs.accentHue === a.hue} onClick={() => setPrefs({ accentHue: a.hue })} className={cx('size-11 rounded-full border-2', prefs.accentHue === a.hue ? 'border-text' : 'border-transparent')} style={{ background: `oklch(0.75 0.15 ${a.hue})` }} />
+                <button key={a.hue} type="button" aria-label={`${a.name} accent`} aria-pressed={prefs.accentHue === a.hue} onClick={() => setPrefs({ accentHue: a.hue })} className={cx('size-11 rounded-full border-2 shadow-[inset_0_1px_0_rgb(255_255_255/0.5),inset_0_-2px_4px_rgb(0_0_0/0.2)] transition-transform active:scale-90', prefs.accentHue === a.hue ? 'scale-110 border-text' : 'border-transparent')} style={{ background: `radial-gradient(circle at 35% 30%, oklch(0.88 0.1 ${a.hue}), oklch(0.7 0.16 ${a.hue}) 70%)` }} />
               ))}
             </div>
           </section>

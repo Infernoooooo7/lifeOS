@@ -53,9 +53,9 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
   return (
     <button
       type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}
-      className={cx('relative h-6 w-11 flex-none rounded-full border transition-colors', checked ? 'border-transparent bg-accent' : 'border-line-strong bg-surface-3')}
+      className={cx('relative h-[26px] w-[46px] flex-none rounded-full border transition-[background,border-color,box-shadow] duration-200', checked ? 'border-transparent bg-[linear-gradient(180deg,var(--accent),var(--accent-strong))] shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_4px_14px_-4px_var(--accent)]' : 'border-[var(--glass-line)] bg-[var(--glass-well)] shadow-[inset_0_1px_2px_rgb(0_0_0/var(--well-shade))]')}
     >
-      <span className={cx('absolute top-0.5 size-[18px] rounded-full bg-white shadow transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+      <span className={cx('absolute top-[2px] h-[20px] w-[20px] rounded-full bg-[linear-gradient(180deg,#fff,#e9edf5)] shadow-[0_2px_6px_rgb(0_0_0/0.3),inset_0_-1px_0_rgb(0_0_0/0.08)] transition-all duration-300 ease-[cubic-bezier(0.3,1.5,0.5,1)]', checked ? 'left-[22px]' : 'left-[2px]')} />
     </button>
   );
 }
@@ -88,11 +88,11 @@ export interface Option<T extends string = string> {
 
 export function Segmented<T extends string>({ value, onChange, options, label, size = 'md' }: { value: T; onChange: (v: T) => void; options: Option<T>[]; label: string; size?: 'sm' | 'md' }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[11px] border border-line bg-surface p-0.5 no-scrollbar">
+    <div role="radiogroup" aria-label={label} className="seg">
       {options.map((o) => (
         <button
           key={o.value} type="button" role="radio" aria-checked={value === o.value} aria-label={o.label} title={o.label} onClick={() => onChange(o.value)}
-          className={cx('inline-flex flex-none items-center gap-1.5 rounded-[9px] px-2.5 text-[0.83rem] font-medium transition-colors', size === 'sm' ? 'h-7' : 'h-8 pointer-coarse:h-10', value === o.value ? 'bg-surface-3 text-text shadow-sm' : 'text-muted hover:text-text')}
+          className={cx('seg-item', size === 'sm' ? 'h-7' : 'h-8 pointer-coarse:h-10')}
         >
           {o.icon && <Icon name={o.icon} size={15} />}
           <span className={cx(o.icon && 'max-sm:sr-only')}>{o.label}</span>
@@ -113,7 +113,7 @@ export function Tabs<T extends string>({ value, onChange, tabs, className }: { v
           {t.icon && <Icon name={t.icon} size={16} />}
           {t.label}
           {t.count !== undefined && t.count > 0 && <span className="chip h-5 px-1.5 text-[0.68rem]">{t.count}</span>}
-          {value === t.value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
+          {value === t.value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent shadow-[0_0_12px_1px_var(--accent)]" />}
         </button>
       ))}
     </div>
@@ -163,7 +163,7 @@ export function Sheet({ open, onClose, title, children, footer, side, full, widt
         if (e.target === ref.current) onClose();
       }}
     >
-      <div className="panel">
+      <div className="panel sheet-panel">
         {(title || actions) && (
           <header className="flex flex-none items-center gap-2 border-b border-line px-4 py-2.5 sm:px-5">
             <h2 className="min-w-0 flex-1 truncate text-[1.05rem] font-semibold">{title}</h2>
@@ -277,7 +277,7 @@ export function Menu({ trigger, items, align = 'end', label }: { trigger: (props
 export function Empty({ icon = 'inbox', title, hint, action }: { icon?: IconName; title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-surface-2 text-muted">
+      <span className="tile size-14 rounded-[18px]">
         <Icon name={icon} size={22} />
       </span>
       <p className="font-medium">{title}</p>
@@ -291,7 +291,7 @@ export function Progress({ value, color, className, label }: { value: number; co
   const pct = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)) * 100;
   return (
     <div role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={label ?? 'Progress'} className={cx('h-1.5 w-full overflow-hidden rounded-full bg-surface-3', className)}>
-      <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: color ?? 'var(--accent)' }} />
+      <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: color ?? 'linear-gradient(90deg, var(--accent-strong), var(--accent))', boxShadow: `0 0 10px -1px ${color ?? 'var(--accent)'}` }} />
     </div>
   );
 }
