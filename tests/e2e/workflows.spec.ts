@@ -136,6 +136,8 @@ test.describe('capture and search', () => {
     await startLocal(page);
     await restoreSample(page);
     await page.goto('/app');
+    // Wait until the app is on screen (as a person would) before using the keyboard shortcut.
+    await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening|night)/ })).toBeVisible();
     if (isPhone(page)) await page.getByRole('button', { name: 'Search' }).click();
     else await page.keyboard.press('Control+k');
     const box = page.getByRole('combobox', { name: 'Search everything or type a command' });
@@ -389,5 +391,26 @@ test.describe('repeating events', () => {
     await editor.getByLabel('Repeat', { exact: true }).selectOption('monthly');
     await editor.getByLabel('Repeats on').selectOption({ label: 'On the second Saturday' });
     await expect(editor.getByText('Every month on the second Saturday')).toBeVisible();
+  });
+});
+
+test.describe('plan my day', () => {
+  test('fits urgent tasks into free time and adds the blocks to the calendar', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/calendar/plan');
+    const sheet = page.getByRole('dialog', { name: 'Plan my day' });
+    // Plan tomorrow so the test does not depend on the time of day it runs.
+    const t = new Date(Date.now() + 86_400_000);
+    await sheet.getByLabel('Day').fill(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`);
+    const blocks = sheet.getByRole('list', { name: 'Proposed time blocks' }).getByRole('listitem');
+    await expect(blocks.first()).toBeVisible();
+    await expect(sheet.getByText('Pay electricity bill')).toBeVisible(); // overdue tasks are planned first
+    const count = await blocks.count();
+    await blocks.first().getByRole('button', { name: /^Leave out/ }).click();
+    await expect(blocks).toHaveCount(count - 1);
+    await sheet.getByRole('button', { name: /^Add \d+ time block/ }).click();
+    await expect(page.getByText(/^Added \d+ time block/)).toBeVisible();
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /Write homepage copy|Review pull requests/ }).first()).toBeVisible();
   });
 });

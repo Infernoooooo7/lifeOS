@@ -8,7 +8,9 @@ import { create, createMany, titleOf } from '@/core/data/store';
 import { downloadFile } from '@/core/lib/backup';
 import { addDays, addMonths, endOfDay, inYear, endOfMonth, fmtDuration, fmtTime, parseDate, sameDay, startOfDay, startOfMonth, startOfWeek, ymd } from '@/core/lib/dates';
 import { parseIcs, toIcs, type IcsEvent } from '@/core/lib/ics';
+import { freeSlots, planCandidates, planDay, planningDay, type DayPlan } from '@/core/lib/planner';
 import { occurrences, type Recurrence } from '@/core/lib/recurrence';
+import type { TaskLike } from '@/core/lib/tasks';
 import { Page, type ModuleProps } from '@/shell/Page';
 import { Icon } from '@/ui/icons';
 import { Button, Empty, IconButton, Menu, Segmented, Sheet, cx } from '@/ui/kit';
@@ -102,20 +104,6 @@ function useOccurrences(from: Date, to: Date, hidden: Set<string>, layers: { tas
   }, [events, calendars, tasks, milestones, assignments, exams, dates, subscriptions, enabled, from, to, hidden, layers.tasks, layers.other]);
 }
 
-/** Free slots of at least `minMinutes` within working hours on a day. */
-export function freeSlots(day: Date, busy: { start: Date; end: Date }[], from: string, to: string, minMinutes: number): { start: Date; end: Date }[] {
-  const d0 = startOfDay(day);
-  const at = (mins: number) => new Date(d0.getTime() + mins * 60_000);
-  let cursor = at(hhmm(from));
-  const end = at(hhmm(to));
-  const out: { start: Date; end: Date }[] = [];
-  for (const b of [...busy].filter((x) => x.end > cursor && x.start < end).sort((a, b2) => a.start.getTime() - b2.start.getTime())) {
-    if (b.start.getTime() - cursor.getTime() >= minMinutes * 60_000) out.push({ start: cursor, end: b.start });
-    if (b.end > cursor) cursor = b.end;
-  }
-  if (end.getTime() - cursor.getTime() >= minMinutes * 60_000) out.push({ start: cursor, end });
-  return out;
-}
 
 function TimeGrid({ days, occs, onSlot }: { days: Date[]; occs: Occ[]; onSlot: (at: Date) => void }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -224,6 +212,68 @@ function Agenda({ occs }: { occs: Occ[] }) {
   );
 }
 
+/** Plan my day: fit today's urgent tasks into the free time between events, then add the blocks in one go. */
+function PlanSheet({ day, onClose, onDone }: { day: Date; onClose: () => void; onDone: (d: Date) => void }) {
+  const [prefs] = usePrefs();
+  const tasks = useRecords('tasks');
+  const events = useRecords('events');
+  const now = useNow();
+  const [date, setDate] = useState(ymd(planningDay(day, now)));
+  const d = parseDate(date) ?? planningDay(day, now);
+  const occs = useOccurrences(startOfDay(d), endOfDay(d), new Set(), { tasks: false, other: false });
+  const blocked = useMemo(() => new Set(events.filter((e) => e.taskId && parseDate(e.startAt) && sameDay(parseDate(e.startAt)!, d)).map((e) => String(e.taskId))), [events, d]);
+  const candidates = useMemo(() => planCandidates(tasks as never as (TaskLike & { title?: string })[], d, now, blocked), [tasks, d, now, blocked]);
+  const [skip, setSkip] = useState<Set<string>>(new Set());
+  const plan: DayPlan = useMemo(
+    () => planDay(candidates.filter((t) => !skip.has(t.id)), occs.filter((o) => !o.allDay), d, prefs.workHours, now),
+    [candidates, skip, occs, d, prefs.workHours, now],
+  );
+  const add = async () => {
+    for (const b of plan.blocks) {
+      await create('events', { title: b.parts > 1 ? `${b.title} (${b.part}/${b.parts})` : b.title, startAt: b.start.toISOString(), endAt: b.end.toISOString(), allDay: false, category: 'Work', taskId: b.taskId, description: 'Planned with Plan my day' }, { silent: true });
+    }
+    toast(`Added ${plan.blocks.length} time block${plan.blocks.length === 1 ? '' : 's'} · ${fmtDuration(plan.plannedMinutes)} planned`, { tone: 'good' });
+    onDone(d);
+  };
+  return (
+    <Sheet open onClose={onClose} title="Plan my day" width={520}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" icon="calendar" disabled={!plan.blocks.length} onClick={() => void add()}>{plan.blocks.length ? `Add ${plan.blocks.length} time block${plan.blocks.length === 1 ? '' : 's'}` : 'Nothing to add'}</Button></>}
+    >
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <label className="min-w-0 flex-1 basis-40"><span className="label">Day</span><input type="date" className="input" value={date} min={ymd(now)} onChange={(e) => setDate(e.target.value)} /></label>
+        <p className="basis-full text-xs text-faint">Overdue tasks, tasks due that day and undated high-priority tasks, fitted between your events within working hours ({prefs.workHours.from}–{prefs.workHours.to}). Tasks without an estimate get 30 minutes.</p>
+      </div>
+      <div className="mb-3 grid grid-cols-3 gap-2 text-center text-sm">
+        <div className="rounded-xl border border-line px-2 py-2"><div className="num text-lg font-semibold">{fmtDuration(plan.freeMinutes)}</div><div className="text-xs text-muted">free</div></div>
+        <div className="rounded-xl border border-line px-2 py-2"><div className="num text-lg font-semibold text-accent">{fmtDuration(plan.plannedMinutes)}</div><div className="text-xs text-muted">planned</div></div>
+        <div className="rounded-xl border border-line px-2 py-2"><div className="num text-lg font-semibold">{candidates.length - skip.size}</div><div className="text-xs text-muted">tasks</div></div>
+      </div>
+      {candidates.length === 0 ? (
+        <Empty icon="checkCircle" title="Nothing urgent to plan" hint="No overdue tasks, nothing due that day and no undated high-priority tasks. Add estimates and due dates to tasks to plan them here." />
+      ) : (
+        <>
+          <ol className="space-y-1" aria-label="Proposed time blocks">
+            {plan.blocks.map((b) => (
+              <li key={`${b.taskId}-${b.part}`} className="row !py-1.5">
+                <span className="num flex-none whitespace-nowrap text-sm text-muted">{fmtTime(b.start)} – {fmtTime(b.end)}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{b.title}{b.parts > 1 && <span className="text-faint"> · part {b.part} of {b.parts}</span>}</span>
+                <IconButton icon="x" label={`Leave out ${b.title}`} onClick={() => setSkip(new Set([...skip, b.taskId]))} />
+              </li>
+            ))}
+          </ol>
+          {plan.unplaced.length > 0 && (
+            <div className="mt-3 rounded-xl border border-warn/30 bg-warn/10 px-3 py-2 text-sm">
+              <div className="font-medium text-warn">Does not fit that day</div>
+              <ul className="mt-1 space-y-0.5 text-muted">{plan.unplaced.map((u) => <li key={u.taskId}>{u.title} — {fmtDuration(u.minutes)} short</li>)}</ul>
+            </div>
+          )}
+          {skip.size > 0 && <button type="button" className="mt-2 text-xs text-accent" onClick={() => setSkip(new Set())}>Put back {skip.size} left-out task{skip.size === 1 ? '' : 's'}</button>}
+        </>
+      )}
+    </Sheet>
+  );
+}
+
 function AvailabilitySheet({ day, onClose }: { day: Date; onClose: () => void }) {
   const [prefs] = usePrefs();
   const [date, setDate] = useState(ymd(day));
@@ -277,11 +327,13 @@ function ImportSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function Calendar(_: ModuleProps) {
+export default function Calendar({ sub }: ModuleProps) {
   const [prefs, setPrefs] = usePrefs();
+  const enabled = useEnabledModules();
   const view = ((prefs.views.calendar as View) ?? 'month');
   const [cursor, setCursor] = useState(() => startOfDay(new Date()));
-  const [sheet, setSheet] = useState<'free' | 'import' | 'block' | null>(null);
+  // /calendar/plan opens Plan my day directly (from the home screen and the command palette).
+  const [sheet, setSheet] = useState<'free' | 'import' | 'block' | 'plan' | null>(sub[0] === 'plan' ? 'plan' : null);
   const calendars = useRecords('calendars');
   const tasks = useRecords('tasks');
   const events = useRecords('events');
@@ -342,6 +394,7 @@ export default function Calendar(_: ModuleProps) {
           <Menu
             label="Calendar tools"
             items={[
+              { label: 'Plan my day', icon: 'wand', onClick: () => setSheet('plan') },
               { label: 'Find free time', icon: 'clock', onClick: () => setSheet('free') },
               { label: 'Block time for a task', icon: 'timer', onClick: () => setSheet('block') },
               { separator: true, label: '' },
@@ -350,6 +403,7 @@ export default function Calendar(_: ModuleProps) {
             ]}
             trigger={(p) => <IconButton icon="more" label="Calendar tools" {...p} />}
           />
+          {enabled.has('tasks') && <Button size="sm" icon="wand" onClick={() => setSheet('plan')}>Plan day</Button>}
           <Button variant="primary" size="sm" icon="plus" onClick={() => openEditor('events')}>Event</Button>
         </>
       }
@@ -370,6 +424,7 @@ export default function Calendar(_: ModuleProps) {
       {view === 'week' && <TimeGrid days={weekDays} occs={occs} onSlot={newAt} />}
       {view === 'day' && <TimeGrid days={[cursor]} occs={occs} onSlot={newAt} />}
       {view === 'agenda' && <Agenda occs={occs.filter((o) => o.end >= startOfDay(new Date()))} />}
+      {sheet === 'plan' && <PlanSheet day={view === 'month' || view === 'agenda' ? new Date() : cursor} onClose={() => setSheet(null)} onDone={(d) => { setSheet(null); setCursor(startOfDay(d)); if (view === 'month' || view === 'agenda') setPrefs({ views: { ...prefs.views, calendar: 'day' } }); }} />}
       {sheet === 'free' && <AvailabilitySheet day={cursor < startOfDay(new Date()) ? new Date() : cursor} onClose={() => setSheet(null)} />}
       {sheet === 'import' && <ImportSheet onClose={() => setSheet(null)} />}
       <Sheet open={sheet === 'block'} onClose={() => setSheet(null)} title="Block time for a task" width={460}>

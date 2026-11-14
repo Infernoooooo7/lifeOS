@@ -94,6 +94,7 @@ export const MODULES: ModuleDef[] = [
       ['agenda', 'Agenda view', 'Chronological list of what is coming up.'],
       ['events', 'Event creation and editing', 'Timed and all-day events with location and notes.'],
       ['recurring', 'Recurring events', 'Repeat rules expanded on the fly in every view.'],
+      ['plan-day', 'Plan my day', 'Fits overdue, due-today and urgent tasks into the free time between events within working hours — splitting long tasks, never planning in the past — then adds the blocks in one go.', 'implemented', undefined, ['tasks']],
       ['nth-weekday', 'Monthly by weekday', 'Repeat on “the 2nd Tuesday” or “the last Friday” of the month, as well as on a date.'],
       ['skip', 'Skip one occurrence', 'Open an occurrence from the calendar and skip just that one, with undo; skipped dates can be restored from the series.'],
       ['reminders', 'Event reminders', 'Per-event lead times feeding the notification center.'],

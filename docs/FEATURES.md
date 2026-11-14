@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**314 capabilities in 25 modules** — 301 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**315 capabilities in 25 modules** — 302 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -17,7 +17,7 @@
 | --- | --- | ---: | ---: | ---: | ---: |
 | Home | System | 7 | 0 | 0 | 0 |
 | Tasks | Productivity | 18 | 0 | 0 | 0 |
-| Calendar | Productivity | 17 | 0 | 0 | 1 |
+| Calendar | Productivity | 18 | 0 | 0 | 1 |
 | Projects | Productivity | 13 | 0 | 0 | 0 |
 | Notes | Knowledge | 13 | 0 | 0 | 1 |
 | Habits | Wellbeing | 13 | 0 | 0 | 0 |
@@ -92,6 +92,7 @@ _Time, visible._ Module id `calendar` · on by default
 | ✅ | Agenda view | Chronological list of what is coming up. | `calendar.agenda` |
 | ✅ | Event creation and editing | Timed and all-day events with location and notes. | `calendar.events` |
 | ✅ | Recurring events | Repeat rules expanded on the fly in every view. | `calendar.recurring` |
+| ✅ | Plan my day | Fits overdue, due-today and urgent tasks into the free time between events within working hours — splitting long tasks, never planning in the past — then adds the blocks in one go. | `calendar.plan-day` |
 | ✅ | Monthly by weekday | Repeat on “the 2nd Tuesday” or “the last Friday” of the month, as well as on a date. | `calendar.nth-weekday` |
 | ✅ | Skip one occurrence | Open an occurrence from the calendar and skip just that one, with undo; skipped dates can be restored from the series. | `calendar.skip` |
 | ✅ | Event reminders | Per-event lead times feeding the notification center. | `calendar.reminders` |

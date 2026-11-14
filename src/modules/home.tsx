@@ -100,6 +100,7 @@ function DailyOverview() {
         ))}
       </div>
       {enabled.has('focus') && prefs.focus.goal > 0 && <Progress value={t.focusMin / prefs.focus.goal} className="basis-full" label="Focus goal" />}
+      {enabled.has('calendar') && enabled.has('tasks') && <Button size="sm" icon="wand" className="mt-1" onClick={() => navigate('/calendar/plan')}>Plan my day</Button>}
     </div>
   );
 }

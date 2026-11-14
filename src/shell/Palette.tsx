@@ -84,6 +84,8 @@ export function Palette() {
       { id: 'cap-any', label: 'Quick capture…', icon: 'plus', hint: 'C', run: () => openCapture(), keywords: 'add new idea link reminder goal' },
       ...MODULES.filter((m) => enabled.has(m.id)).map((m) => ({ id: `go-${m.id}`, label: `Go to ${m.name}`, icon: m.icon, run: () => navigate(m.id === 'home' ? '/' : `/${m.id}`), keywords: m.tagline })),
       { id: 'theme', label: `Switch to ${prefs.theme === 'light' ? 'dark' : 'light'} theme`, icon: prefs.theme === 'light' ? 'moon' : 'sun', run: () => (setPrefs({ theme: prefs.theme === 'light' ? 'dark' : 'light' }), close()), keywords: 'appearance mode' },
+      ...(enabled.has('calendar') && enabled.has('tasks') ? [{ id: 'plan-day', label: 'Plan my day', icon: 'wand', run: () => navigate('/calendar/plan'), keywords: 'schedule time block auto' }] : []),
+      ...(enabled.has('insights') ? [{ id: 'review', label: 'Start weekly review', icon: 'checklist', run: () => navigate('/insights/review'), keywords: 'week reflect gtd' }] : []),
       { id: 'sync', label: 'Sync now', icon: 'refresh', run: () => (void syncNow(), close()), keywords: 'refresh cloud' },
       { id: 'backup', label: 'Export a backup', icon: 'download', run: () => navigate('/settings/data'), keywords: 'download json' },
       { id: 'shortcuts', label: 'Keyboard shortcuts', icon: 'command', hint: '?', run: () => useApp.setState({ palette: false, shortcuts: true }) },
