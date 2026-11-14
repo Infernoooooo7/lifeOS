@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**306 capabilities in 25 modules** — 293 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**311 capabilities in 25 modules** — 298 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -39,7 +39,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 31 | 0 | 1 | 2 |
+| Settings | System | 36 | 0 | 1 | 2 |
 
 ## Home
 
@@ -487,6 +487,11 @@ _Make it yours._ Module id `settings` · always on
 
 | | Capability | Description | Id |
 | --- | --- | --- | --- |
+| ✅ | Import from Todoist | Todoist CSV exports become projects with sections, labels, sub-tasks, priorities, dates and comments. | `platform.import-todoist` |
+| ✅ | Import from Google Keep | Takeout notes and checklists with labels, pins and archive state; the trash is skipped. | `platform.import-keep` |
+| ✅ | Import Markdown | Notes from Notion, Obsidian, Bear or any .md files, with titles and tags from front matter. | `platform.import-markdown` |
+| ✅ | Import bank statements | OFX, QFX and QIF statements become transactions with suggested categories; overlapping downloads do not duplicate. | `platform.import-bank` |
+| ✅ | Safe re-import | Imported items keep their source identity: importing again adds only what is new, and never overwrites your changes unless you ask. | `platform.import-safe` |
 | ✅ | Universal search | Search every module at once, offline. | `platform.search` |
 | ✅ | Command palette | Ctrl / ⌘ K to jump anywhere or run an action. | `platform.palette` |
 | ✅ | Quick capture | Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere. | `platform.capture` |

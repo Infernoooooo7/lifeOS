@@ -18,6 +18,7 @@ import { switchWorkspace } from '@/shell/AppRoot';
 import { requestNotificationPermission } from '@/shell/engines';
 import { openHit } from '@/shell/Palette';
 import { Page, type ModuleProps } from '@/shell/Page';
+import { AppImport } from './settings-import';
 import { useNavModules } from '@/shell/Shell';
 import { exportCsv } from '@/ui/CollectionView';
 import { recordTitle } from '@/ui/fields';
@@ -310,6 +311,9 @@ function DataSection() {
             <div className="mt-3 flex gap-2"><Button variant="ghost" onClick={() => { setPlan(null); setFile(null); }}>Cancel</Button><Button variant={mode === 'replace' && changedCount ? 'danger' : 'primary'} disabled={!chosen.size || (addedCount === 0 && (mode === 'keep' || changedCount === 0))} onClick={() => void run()}>Restore</Button></div>
           </>
         )}
+      </Card>
+      <Card title="Import from other apps">
+        <AppImport />
       </Card>
       <Card title="Trash">
         <p className="text-sm text-muted">Deleted items from every module. Restore brings an item back exactly as it was.</p>

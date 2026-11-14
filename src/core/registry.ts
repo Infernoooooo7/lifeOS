@@ -445,6 +445,11 @@ export const MODULES: ModuleDef[] = [
   {
     id: 'settings', name: 'Settings', tagline: 'Make it yours', icon: 'settings', hue: 215, category: 'System', core: true,
     features: feats('platform', [
+      ['import-todoist', 'Import from Todoist', 'Todoist CSV exports become projects with sections, labels, sub-tasks, priorities, dates and comments.', 'implemented', undefined, ['tasks']],
+      ['import-keep', 'Import from Google Keep', 'Takeout notes and checklists with labels, pins and archive state; the trash is skipped.', 'implemented', undefined, ['notes']],
+      ['import-markdown', 'Import Markdown', 'Notes from Notion, Obsidian, Bear or any .md files, with titles and tags from front matter.', 'implemented', undefined, ['notes']],
+      ['import-bank', 'Import bank statements', 'OFX, QFX and QIF statements become transactions with suggested categories; overlapping downloads do not duplicate.', 'implemented', undefined, ['finance']],
+      ['import-safe', 'Safe re-import', 'Imported items keep their source identity: importing again adds only what is new, and never overwrites your changes unless you ask.'],
       ['search', 'Universal search', 'Search every module at once, offline.'],
       ['palette', 'Command palette', 'Ctrl / ⌘ K to jump anywhere or run an action.'],
       ['capture', 'Quick capture', 'Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere.'],

@@ -324,3 +324,33 @@ test.describe('weekly review', () => {
     await expect(page.locator('#main-scroll .row', { hasText: 'Weekly review' }).first()).toBeVisible();
   });
 });
+
+test.describe('imports from other apps', () => {
+  test('a bank statement imports once; importing it again adds nothing', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/settings/data');
+    await page.getByRole('radio', { name: 'Bank statement' }).click();
+    const qif = '!Type:Bank\nD02/11/2026\nT-640.00\nPSwiggy order\n^\nD03/11/2026\nT52000\nPAcme salary\n^\n';
+    await page.getByLabel('Bank statement files').setInputFiles({ name: 'statement.qif', mimeType: 'text/plain', buffer: Buffer.from(qif) });
+    await expect(page.getByText(/2\s*transactions/)).toBeVisible();
+    await page.getByRole('button', { name: 'Import 2 items' }).click();
+    await expect(page.getByText('Imported 2 items from Bank statement')).toBeVisible();
+    await page.getByLabel('Bank statement files').setInputFiles({ name: 'statement.qif', mimeType: 'text/plain', buffer: Buffer.from(qif) });
+    await expect(page.getByText('Update the 2 already imported')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Nothing new to import' })).toBeDisabled();
+    await page.goto('/app/finance/transactions');
+    await expect(page.locator('#main-scroll').getByText('Swiggy order')).toBeVisible();
+  });
+
+  test('Google Keep checklists arrive as notes', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/settings/data');
+    await page.getByRole('radio', { name: 'Google Keep' }).click();
+    const note = JSON.stringify({ title: 'Packing list', listContent: [{ text: 'Charger', isChecked: false }], labels: [{ name: 'Travel' }], createdTimestampUsec: 1700000000000000 });
+    await page.getByLabel('Google Keep files').setInputFiles([{ name: 'Packing list.json', mimeType: 'application/json', buffer: Buffer.from(note) }]);
+    await page.getByRole('button', { name: 'Import 1 item' }).click();
+    await expect(page.getByText('Imported 1 item from Google Keep')).toBeVisible();
+    await page.goto('/app/notes');
+    await expect(page.locator('#main-scroll').getByText('Packing list').first()).toBeVisible();
+  });
+});
