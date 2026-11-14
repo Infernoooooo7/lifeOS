@@ -1,10 +1,12 @@
 'use client';
 
-import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react';
+import { AnimatePresence, LazyMotion, m } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { Icon, type IconName } from './icons';
 import { Button, Sheet, cx } from './kit';
+
+const loadMotion = () => import('@/ui/motionFeatures').then((r) => r.default);
 
 interface Toast {
   id: number;
@@ -83,13 +85,13 @@ export function OverlayHost() {
   return (
     <>
       <DialogHost />
-      <LazyMotion features={domAnimation}>
+      <LazyMotion features={loadMotion}>
         <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(84px+env(safe-area-inset-bottom))] z-[90] flex flex-col items-center gap-2 px-4 md:bottom-6">
           <AnimatePresence initial={false}>
             {toasts.map((t) => (
               <m.div
                 key={t.id} layout initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.97 }} transition={{ duration: 0.18 }}
-                className={cx('panel pointer-events-auto flex max-w-full items-center gap-3 px-4 py-2.5 text-[0.9rem]', t.tone === 'bad' && '!border-bad/40')}
+                className={cx('panel glass-float pointer-events-auto flex max-w-full items-center gap-3 px-4 py-2.5 text-[0.9rem]', t.tone === 'bad' && '!border-bad/40')}
               >
                 <Icon name={t.icon ?? (t.tone === 'bad' ? 'warning' : t.tone === 'good' ? 'checkCircle' : 'info')} size={17} className={t.tone === 'bad' ? 'text-bad' : t.tone === 'good' ? 'text-good' : 'text-accent'} />
                 <span className="min-w-0 break-words">{t.message}</span>

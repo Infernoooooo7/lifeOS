@@ -482,7 +482,7 @@ export default function Spatial(_: ModuleProps) {
           <IconButton icon="panelRight" label={panel ? 'Hide list' : 'Show list'} active={panel} className="glass !rounded-[10px]" onClick={() => setPanel(!panel)} />
         </div>
       </div>
-      {panel && <aside className="glass absolute bottom-3 right-3 top-[62px] w-[270px] overflow-y-auto p-3 max-md:inset-x-3 max-md:top-auto max-md:max-h-[42%] max-md:w-auto" aria-label="Items in this view">{listPanel}</aside>}
+      {panel && <aside className="glass glass-float absolute bottom-3 right-3 top-[62px] w-[270px] overflow-y-auto p-3 max-md:inset-x-3 max-md:top-auto max-md:max-h-[42%] max-md:w-auto" aria-label="Items in this view">{listPanel}</aside>}
       <p className="pointer-events-none absolute bottom-3 left-3 max-w-[60%] text-xs text-faint max-md:hidden">Drag to orbit · scroll to zoom · select a card to complete it, a planet to open a module</p>
     </div>
   );

@@ -44,14 +44,15 @@ export function snippetFor(rec: Rec, terms: string[]): string {
 export async function search(query: string, opts: { limit?: number; collections?: Set<string> } = {}): Promise<SearchHit[]> {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 6);
   if (!terms.length) return [];
-  const hits: SearchHit[] = [];
+  const scored: { rec: Rec; score: number }[] = [];
   await getDb().records.each((rec) => {
     if (rec.deletedAt || HIDDEN.has(rec._c)) return;
     if (opts.collections && !opts.collections.has(rec._c)) return;
     if (!GLOBAL_COLLECTIONS.has(rec._c) && rec.ws && rec.ws !== ctx.ws) return;
     const score = scoreRecord(rec, terms);
-    if (score > 0) hits.push({ rec, title: titleOf(rec), snippet: snippetFor(rec, terms), score });
+    if (score > 0) scored.push({ rec, score });
   });
-  hits.sort((a, b) => b.score - a.score);
-  return hits.slice(0, opts.limit ?? 40);
+  scored.sort((a, b) => b.score - a.score);
+  // Titles and snippets only for the hits that are shown.
+  return scored.slice(0, opts.limit ?? 40).map(({ rec, score }) => ({ rec, score, title: titleOf(rec), snippet: snippetFor(rec, terms) }));
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLiveQuery } from 'dexie-react-hooks';
+import { liveQuery } from 'dexie';
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { DEFAULT_PREFS, useApp, type Prefs } from '@/core/app';
 import { OPTION_SETS, collection as collectionDef, type FieldDef } from '@/core/collections';
@@ -11,11 +11,68 @@ import { syncState, type SyncState } from './syncClient';
 
 const EMPTY: Rec[] = [];
 
+// ── Shared live queries ─────────────────────────────────────────────────────────────────────────────
+// Many components read the same collection (and nearly every component reads preferences). Each key gets ONE
+// Dexie live query shared by all its readers, so a write re-reads the data once and every reader receives the
+// same array instance. A query stays subscribed for a while after its last reader leaves, so returning to a
+// module shows its data at once instead of loading again.
+
+interface Entry {
+  value: unknown;
+  listeners: Set<() => void>;
+  sub: { unsubscribe(): void } | null;
+  idle: ReturnType<typeof setTimeout> | null;
+}
+const live = new Map<string, Entry>();
+const KEEP_ALIVE_MS = 60_000;
+
+function subscribeLive(key: string, query: () => Promise<unknown>, onChange: () => void): () => void {
+  let e = live.get(key);
+  if (!e) live.set(key, (e = { value: undefined, listeners: new Set(), sub: null, idle: null }));
+  const entry = e;
+  entry.listeners.add(onChange);
+  if (entry.idle) clearTimeout(entry.idle), (entry.idle = null);
+  if (!entry.sub) {
+    entry.sub = liveQuery(query).subscribe({
+      next: (v) => {
+        entry.value = v;
+        entry.listeners.forEach((l) => l());
+      },
+      error: (err) => console.error('live query failed', key, err),
+    });
+  }
+  return () => {
+    entry.listeners.delete(onChange);
+    if (entry.listeners.size) return;
+    entry.idle = setTimeout(() => {
+      if (entry.listeners.size) return;
+      entry.sub?.unsubscribe();
+      live.delete(key);
+    }, KEEP_ALIVE_MS);
+  };
+}
+
+const noop = () => () => undefined;
+const none = () => undefined;
+
+/** The current value of a shared live query; undefined until its first result (or while there is no database). */
+function useLive<T>(name: string | null, query: () => Promise<T>): T | undefined {
+  const ready = useApp((s) => s.ready);
+  const key = name && ready && hasDb() ? `${getDb().name}|${name}` : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const subscribe = useMemo(() => (key ? (cb: () => void) => subscribeLive(key, query, cb) : noop), [key]);
+  const get = useCallback(() => (key ? (live.get(key)?.value as T | undefined) : undefined), [key]);
+  return useSyncExternalStore(subscribe, get, none);
+}
+
+function useCollectionRows(collection: string): Rec[] | undefined {
+  return useLive(`c:${collection}`, () => getDb().records.where('_c').equals(collection).toArray());
+}
+
 /** Live records of a collection in the active workspace (deleted records excluded unless asked for). */
 export function useRecords(collection: string, opts: { includeDeleted?: boolean; allWorkspaces?: boolean; onlyDeleted?: boolean } = {}): Rec[] {
   const ws = useApp((s) => s.ws);
-  const ready = useApp((s) => s.ready);
-  const rows = useLiveQuery(() => (ready && hasDb() ? getDb().records.where('_c').equals(collection).toArray() : Promise.resolve(EMPTY)), [collection, ready]);
+  const rows = useCollectionRows(collection);
   return useMemo(() => {
     if (!rows) return EMPTY;
     const scoped = !GLOBAL_COLLECTIONS.has(collection) && !opts.allWorkspaces;
@@ -25,9 +82,7 @@ export function useRecords(collection: string, opts: { includeDeleted?: boolean;
 
 /** True until the first read of a collection has completed. */
 export function useLoaded(collection: string): boolean {
-  const ready = useApp((s) => s.ready);
-  const n = useLiveQuery(() => (ready && hasDb() ? getDb().records.where('_c').equals(collection).count() : Promise.resolve(-1)), [collection, ready]);
-  return n !== undefined && n >= 0;
+  return useCollectionRows(collection) !== undefined;
 }
 
 export function useById(collection: string): Map<string, Rec> {
@@ -35,16 +90,19 @@ export function useById(collection: string): Map<string, Rec> {
   return useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 }
 
+/** A record and whether it has been read yet (`loaded` is true even when the record does not exist). */
+function useRecordState(id: string | undefined | null): { rec: Rec | undefined; loaded: boolean } {
+  const box = useLive(id ? `r:${id}` : null, () => getDb().records.get(id!).then((rec) => ({ rec })));
+  return { rec: box?.rec, loaded: box !== undefined };
+}
+
 export function useRecord(id: string | undefined | null): Rec | undefined {
-  const ready = useApp((s) => s.ready);
-  return useLiveQuery(async () => (id && ready && hasDb() ? getDb().records.get(id) : undefined), [id, ready]);
+  return useRecordState(id).rec;
 }
 
 /** A synced setting stored as its own record (`setting:<key>`). */
 export function useSetting<T>(key: string, fallback: T): [T, (value: T) => void, boolean] {
-  const rec = useRecord(`setting:${key}`);
-  const ready = useApp((s) => s.ready);
-  const loaded = useLiveQuery(() => (ready && hasDb() ? getDb().records.get(`setting:${key}`).then(() => true) : Promise.resolve(false)), [key, ready]);
+  const { rec, loaded } = useRecordState(`setting:${key}`);
   const value = rec && !rec.deletedAt && rec.value !== undefined && rec.value !== null ? (rec.value as T) : fallback;
   const set = useCallback((next: T) => void upsert('settings', `setting:${key}`, { value: next as unknown }), [key]);
   return [value, set, !!loaded];
@@ -109,8 +167,7 @@ export const setModule = (moduleId: string, patch: { enabled?: boolean; favorite
 
 export function useSync(): SyncState & { pending: number; conflicts: number } {
   const state = useSyncExternalStore(syncState.subscribe, syncState.getState, syncState.getState);
-  const ready = useApp((s) => s.ready);
-  const pending = useLiveQuery(() => (ready && hasDb() ? getDb().records.where('_dirty').equals(1).count() : Promise.resolve(0)), [ready]) ?? 0;
+  const pending = useLive('pending', () => getDb().records.where('_dirty').equals(1).count()) ?? 0;
   const conflicts = useConflicts().filter((c) => !c.resolved).length;
   return { ...state, pending, conflicts };
 }

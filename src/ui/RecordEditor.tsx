@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { closeEditor, openEditor, useApp } from '@/core/app';
 import { collection as collectionDef, titleField, type FieldDef } from '@/core/collections';
 import type { Rec } from '@/core/data/db';
@@ -9,7 +9,7 @@ import { create, getRec, remove, restore, titleOf, update, upsert } from '@/core
 import { timeAgo, ymd } from '@/core/lib/dates';
 import { isDone, nextRecurringInstance, wouldCycle, type TaskLike } from '@/core/lib/tasks';
 import type { Fields } from '@/core/sync/merge';
-import { FieldInput } from './fields';
+import { FormField } from './fields';
 import { Icon } from './icons';
 import { Button, Checkbox, IconButton, Menu, Sheet, cx, type MenuItem } from './kit';
 import { toast } from './overlays';
@@ -54,7 +54,7 @@ function visible(field: FieldDef, draft: Fields): boolean {
   return !field.when || field.when.in.includes(draft[field.when.k]);
 }
 
-function TaskExtras({ task }: { task: Rec }) {
+const TaskExtras = memo(function TaskExtras({ task }: { task: Rec }) {
   const all = useRecords('tasks');
   const activity = useRecords('activity');
   const subs = useMemo(() => all.filter((t) => t.parentId === task.id).sort((a, b) => a._ca - b._ca), [all, task.id]);
@@ -93,7 +93,7 @@ function TaskExtras({ task }: { task: Rec }) {
       )}
     </div>
   );
-}
+});
 
 const TEMPLATABLE = new Set(['tasks', 'notes', 'projects', 'checklists', 'routines', 'workoutPlans', 'trips']);
 
@@ -234,12 +234,12 @@ export function RecordEditor() {
             {f.t === 'bool' ? (
               <>
                 <span className="min-w-0"><span className="block text-sm font-medium">{f.label}</span>{f.help && <span className="block text-xs text-faint">{f.help}</span>}</span>
-                <FieldInput def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} />
+                <FormField def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} />
               </>
             ) : (
               <>
                 <span className="label">{f.label}{f.req && <span className="text-accent"> *</span>}</span>
-                <FieldInput def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} autoFocus={isNew && i === 0} />
+                <FormField def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} autoFocus={isNew && i === 0} />
                 {errors[f.k] ? <span className="mt-1 block text-xs text-bad">{errors[f.k]}</span> : f.help && <span className="mt-1 block text-xs text-faint">{f.help}</span>}
               </>
             )}

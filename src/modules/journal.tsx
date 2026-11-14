@@ -64,7 +64,7 @@ function TodayEntry({ date }: { date: string }) {
   return (
     <div className="card">
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1"><div className="font-display text-lg font-semibold">{parseDate(date)!.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div><div className="text-xs text-faint">{text.trim() ? `${text.trim().split(/\s+/).length} words · saved automatically` : 'Saved automatically as you write'}</div></div>
+        <div className="min-w-0 flex-1 basis-52"><div className="font-display text-lg font-semibold">{parseDate(date)!.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div><div className="text-xs text-faint">{text.trim() ? `${text.trim().split(/\s+/).length} words · saved automatically` : 'Saved automatically as you write'}</div></div>
         <MoodPicker value={(live?.mood as number) ?? null} onChange={(mood) => void upsert('journal', id, { date, kind: 'daily', mood, content: text })} />
       </div>
       <button type="button" className="mb-2 flex w-full items-start gap-2 rounded-xl bg-accent-soft px-3 py-2 text-left text-sm" onClick={() => { dirty.current = true; setText((t) => `${t}${t.trim() ? '\n\n' : ''}**${prompt}**\n`); }}>

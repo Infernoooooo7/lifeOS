@@ -1,7 +1,7 @@
 'use client';
 
 import clsx, { type ClassValue } from 'clsx';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './icons';
 
@@ -87,8 +87,9 @@ export interface Option<T extends string = string> {
 }
 
 export function Segmented<T extends string>({ value, onChange, options, label, size = 'md' }: { value: T; onChange: (v: T) => void; options: Option<T>[]; label: string; size?: 'sm' | 'md' }) {
+  const ref = useScrollEdges<HTMLDivElement>('x', '[aria-checked="true"]', value);
   return (
-    <div role="radiogroup" aria-label={label} className="seg">
+    <div ref={ref} role="radiogroup" aria-label={label} className="seg scroll-edges">
       {options.map((o) => (
         <button
           key={o.value} type="button" role="radio" aria-checked={value === o.value} aria-label={o.label} title={o.label} onClick={() => onChange(o.value)}
@@ -102,9 +103,53 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
   );
 }
 
+/**
+ * Marks a scroll container with data-more-start / data-more-end while content is hidden on that side, so CSS can
+ * fade the edge ("there is more"), and keeps the selected child in view.
+ */
+export function useScrollEdges<E extends HTMLElement>(axis: 'x' | 'y' = 'x', selected?: string, selectedKey?: unknown) {
+  const ref = useRef<E>(null);
+  const scrolledFor = useRef<unknown>(Symbol('none'));
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const pos = axis === 'x' ? el.scrollLeft : el.scrollTop;
+    const max = axis === 'x' ? el.scrollWidth - el.clientWidth : el.scrollHeight - el.clientHeight;
+    el.toggleAttribute('data-more-start', pos > 2);
+    el.toggleAttribute('data-more-end', pos < max - 2);
+  }, [axis]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+    };
+  }, [update]);
+  // After every render: content may have grown, and the selected child may only now exist. The selection is
+  // scrolled into view once per selection, so it never fights the person's own scrolling.
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    const item = selected ? el?.querySelector<HTMLElement>(selected) : null;
+    if (!el || !item || scrolledFor.current === selectedKey) return;
+    scrolledFor.current = selectedKey;
+    const box = el.getBoundingClientRect();
+    const r = item.getBoundingClientRect();
+    if (axis === 'x') {
+      if (r.left < box.left || r.right > box.right) el.scrollLeft += r.left - box.left - 24;
+    } else if (r.top < box.top || r.bottom > box.bottom) el.scrollTop += r.top - box.top - el.clientHeight / 2;
+  });
+  return ref;
+}
+
 export function Tabs<T extends string>({ value, onChange, tabs, className }: { value: T; onChange: (v: T) => void; tabs: (Option<T> & { count?: number })[]; className?: string }) {
+  const ref = useScrollEdges<HTMLDivElement>('x', '[aria-selected="true"]', value);
   return (
-    <div role="tablist" className={cx('flex gap-1 overflow-x-auto border-b border-line no-scrollbar', className)}>
+    <div ref={ref} role="tablist" className={cx('scroll-edges flex gap-1 overflow-x-auto border-b border-line no-scrollbar', className)}>
       {tabs.map((t) => (
         <button
           key={t.value} role="tab" type="button" aria-selected={value === t.value} onClick={() => onChange(t.value)}
@@ -245,7 +290,7 @@ export function Menu({ trigger, items, align = 'end', label }: { trigger: (props
       {trigger({ onClick: () => setOpen((o) => !o), 'aria-expanded': open, 'aria-haspopup': 'menu' })}
       {open && host &&
         createPortal(
-          <div ref={panel} role="menu" aria-label={label} style={pos} className="panel fixed z-[80] max-h-[70dvh] min-w-48 max-w-[min(20rem,calc(100vw-16px))] overflow-y-auto p-1.5 fade-up">
+          <div ref={panel} role="menu" aria-label={label} style={pos} className="panel glass-float fixed z-[80] max-h-[70dvh] min-w-48 max-w-[min(20rem,calc(100vw-16px))] overflow-y-auto p-1.5 fade-up">
             {items.map((item, i) =>
               item.separator ? (
                 <div key={i} className="my-1 h-px bg-line" />
@@ -315,12 +360,12 @@ export function Stat({ label, value, sub, icon, tone, onClick }: { label: string
   const color = tone === 'good' ? 'var(--good)' : tone === 'bad' ? 'var(--bad)' : tone === 'warn' ? 'var(--warn)' : tone === 'accent' ? 'var(--accent)' : undefined;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={cx('card min-w-0 text-left', onClick && 'card-hover')}>
+    <Tag onClick={onClick} className={cx('stat card min-w-0 text-left', onClick && 'card-hover')}>
       <div className="flex items-center gap-2 text-[0.8rem] text-muted">
-        {icon && <Icon name={icon} size={15} />}
-        <span className="truncate">{label}</span>
+        {icon && <Icon name={icon} size={15} className="flex-none" />}
+        <span className="truncate" title={label}>{label}</span>
       </div>
-      <div className="num mt-1.5 truncate text-[1.55rem] font-semibold leading-tight" style={{ color }}>{value}</div>
+      <div className="stat-value num mt-1.5 truncate font-semibold leading-tight" style={{ color }}>{value}</div>
       {sub && <div className="mt-0.5 truncate text-xs text-faint">{sub}</div>}
     </Tag>
   );
@@ -374,14 +419,14 @@ export function useWindowed<T>(items: T[], step = 60): { visible: T[]; sentinel:
 }
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const update = () => setMatches(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [query]);
-  return matches;
+  const subscribe = useCallback(
+    (cb: () => void) => {
+      const mq = window.matchMedia(query);
+      mq.addEventListener('change', cb);
+      return () => mq.removeEventListener('change', cb);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
 }
 export const useIsMobile = () => useMediaQuery('(max-width: 767px)');

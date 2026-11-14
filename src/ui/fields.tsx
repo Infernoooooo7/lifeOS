@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { collection as collectionDef, titleField, type FieldDef, type Opt } from '@/core/collections';
 import { getDb, type Rec } from '@/core/data/db';
 import { useById, useOptions, useRecords } from '@/core/data/hooks';
@@ -454,3 +454,19 @@ export const recordTitle = (collectionId: string, rec: Rec): string => {
   if (body) return body.length > 70 ? `${body.slice(0, 70)}…` : body;
   return def.date && rec[def.date] ? fmtDate(rec[def.date], { year: true }) : 'Untitled';
 };
+
+/**
+ * FieldInput for forms that re-render on every keystroke: a field re-renders only when its own value, its
+ * definition, or the few record properties a field type reads (id, allDay, the option-switching field) change.
+ * `onChange` is not compared; callers pass a closure that always writes the same key.
+ */
+export const FormField = memo(
+  FieldInput,
+  (a, b) =>
+    a.def === b.def &&
+    a.value === b.value &&
+    a.autoFocus === b.autoFocus &&
+    a.rec?.id === b.rec?.id &&
+    a.rec?.allDay === b.rec?.allDay &&
+    (!a.def.optsKeyWhen || a.rec?.[a.def.optsKeyWhen.k] === b.rec?.[a.def.optsKeyWhen.k]),
+);

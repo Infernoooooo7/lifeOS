@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
+import { LazyMotion, MotionConfig } from 'motion/react';
 import { Component, Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ComponentType, type ReactNode } from 'react';
 import { ACCENTS, navigate, openCapture, openEditor, useApp, useSegments, type Prefs } from '@/core/app';
 import { useEnabledModules, useModules, usePrefs, useRecords, useSync, setModule, type ModuleState } from '@/core/data/hooks';
@@ -14,7 +14,7 @@ import { occurrences, type Recurrence } from '@/core/lib/recurrence';
 import { compareTasks, isOpen, isOverdue, type TaskLike } from '@/core/lib/tasks';
 import { INTERESTS, MODULES, moduleDef, recommendedFor } from '@/core/registry';
 import { Icon, type IconName } from '@/ui/icons';
-import { Button, Checkbox, Empty, IconButton, Menu, Sheet, Spinner, cx, useMediaQuery } from '@/ui/kit';
+import { Button, Checkbox, Empty, IconButton, Menu, Sheet, Spinner, cx, useMediaQuery, useScrollEdges } from '@/ui/kit';
 import { OverlayHost, promptDialog, toast } from '@/ui/overlays';
 import { RecordEditor, toggleTask } from '@/ui/RecordEditor';
 import { switchWorkspace } from './AppRoot';
@@ -27,6 +27,8 @@ import { LOADERS, warmModules } from './modules';
 import { NotificationCenter } from './Notifications';
 import type { ModuleProps } from './Page';
 import { Palette } from './Palette';
+
+const loadMotion = () => import('@/ui/motionFeatures').then((r) => r.default);
 
 // ── Preferences → document ───────────────────────────────────────────────────────────────────────
 
@@ -119,26 +121,29 @@ function Sidebar() {
   const [prefs, setPrefs] = usePrefs();
   const nav = useNavModules();
   const active = useSegments()[0] ?? 'home';
-  const collapsed = prefs.sidebarCollapsed;
+  // Tablets get the icon rail: a full sidebar would take a third of a 768 px screen.
+  const wide = useMediaQuery('(min-width: 1180px)');
+  const collapsed = prefs.sidebarCollapsed || !wide;
+  const navRef = useScrollEdges<HTMLElement>('y', '[aria-current="page"]', active);
   return (
     <aside className={cx('no-print sticky top-0 z-20 hidden h-dvh flex-none py-2.5 pl-2.5 transition-[width] duration-300 md:flex', collapsed ? 'w-[82px]' : 'w-[258px]')} aria-label="Primary">
-      <div className="glass-chrome flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="glass-chrome glass-still flex min-w-0 flex-1 flex-col overflow-hidden">
       <div className={cx('flex h-[60px] flex-none items-center gap-2.5 px-4', collapsed && 'justify-center px-0')}>
         <Logo size={30} />
         {!collapsed && <span className="font-display text-[1.05rem] font-semibold tracking-wide">LIFEOS</span>}
       </div>
       <div className="px-3 pb-2"><WorkspaceSwitcher collapsed={collapsed} /></div>
-      <nav className="no-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-1.5">
+      <nav ref={navRef} aria-label="Modules" className="scroll-edges-y thin-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-1.5">
         <NavItem id="home" name="Home" icon="home" active={active === 'home'} collapsed={collapsed} />
         {nav.map((m) => <NavItem key={m.def.id} id={m.def.id} name={m.def.name} icon={m.def.icon} active={active === m.def.id} collapsed={collapsed} />)}
       </nav>
       <div className="space-y-1 border-t border-[var(--glass-line)] p-3">
         <NavItem id="marketplace" name="Marketplace" icon="store" active={active === 'marketplace'} collapsed={collapsed} />
         <NavItem id="settings" name="Settings" icon="settings" active={active === 'settings'} collapsed={collapsed} />
-        <button type="button" onClick={() => setPrefs({ sidebarCollapsed: !collapsed })} className={cx('flex h-9 w-full items-center gap-3 rounded-[12px] px-3 text-sm text-faint transition-colors hover:bg-surface-2 hover:text-text', collapsed && 'justify-center px-0')} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        {wide && <button type="button" onClick={() => setPrefs({ sidebarCollapsed: !collapsed })} className={cx('flex h-9 w-full items-center gap-3 rounded-[12px] px-3 text-sm text-faint transition-colors hover:bg-surface-2 hover:text-text', collapsed && 'justify-center px-0')} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={16} />
           {!collapsed && 'Collapse'}
-        </button>
+        </button>}
       </div>
       </div>
     </aside>
@@ -303,7 +308,7 @@ function ContextPanel() {
   const reminders = useMemo(() => notifications.filter((n) => !n.readAt).sort((a, b) => b._ca - a._ca).slice(0, 4), [notifications]);
   return (
     <aside className="no-print sticky top-0 hidden h-dvh w-[312px] flex-none py-2.5 pr-2.5 xl:flex" aria-label="Context">
-      <div className="glass-chrome no-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-5">
+      <div className="glass-chrome glass-still no-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-5">
       <PanelSection title="Quick actions">
         <div className="grid grid-cols-2 gap-1.5">
           {prefs.quickActions.filter((k) => QUICK[k]).map((k) => <button key={k} type="button" className="btn btn-sm justify-start" onClick={() => openCapture(k)}><Icon name={QUICK[k].icon} size={15} className="text-accent" />{QUICK[k].label}</button>)}
@@ -686,7 +691,7 @@ export function Shell() {
   return (
     <QueryClientProvider client={queryClient}>
     <MotionConfig reducedMotion={prefs.motion === 'reduced' ? 'always' : 'user'}>
-    <LazyMotion features={domAnimation}>
+    <LazyMotion features={loadMotion}>
     <div className="app-canvas flex min-h-dvh">
       <a href="#main-scroll" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-solid focus:px-3 focus:py-2">Skip to content</a>
       <Sidebar />

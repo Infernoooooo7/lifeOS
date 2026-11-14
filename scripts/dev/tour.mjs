@@ -1,5 +1,5 @@
 // Visual tour: onboard in local mode, restore the sample backup through the real UI, then screenshot routes.
-// Usage: [THEME=light|dark] node scripts/dev/tour.mjs <outDir> <desktop|mobile> [route ...]
+// Usage: [THEME=light|dark] node scripts/dev/tour.mjs <outDir> <desktop|tablet|mobile> [route ...]
 import { chromium, devices } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
@@ -9,7 +9,12 @@ const base = process.env.BASE_URL ?? 'http://localhost:3100';
 const routes = only.length ? only : ['/app', '/app/tasks', '/app/tasks/board', '/app/tasks/timeline', '/app/calendar', '/app/projects', '/app/projects/p-web', '/app/notes/n-1', '/app/notes/graph', '/app/habits', '/app/goals', '/app/goals/okrs', '/app/finance', '/app/finance/budgets', '/app/learning', '/app/health', '/app/journal', '/app/focus', '/app/shopping', '/app/travel/trip-1', '/app/files/expiring', '/app/entertainment', '/app/digital', '/app/admin', '/app/utilities', '/app/automation', '/app/insights', '/app/marketplace', '/app/settings/appearance', '/app/settings/data', '/app/spatial'];
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext(mode === 'mobile' ? { ...devices['Pixel 7'] } : { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+const contexts = {
+  mobile: { ...devices['iPhone SE'], viewport: { width: 375, height: 740 } },
+  tablet: { viewport: { width: 768, height: 1024 }, deviceScaleFactor: 1, hasTouch: true },
+  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
+};
+const ctx = await browser.newContext(contexts[mode] ?? contexts.desktop);
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push({ url: page.url(), text: m.text().slice(0, 300) }));
