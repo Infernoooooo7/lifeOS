@@ -74,6 +74,15 @@ export const MODELS: Record<ModelName, ModelCfg> = {
   record: { cols: {}, discriminator: 'collection' },
 };
 
+/** Database table of each model (the `@@map` names in prisma/schema.prisma). */
+export const TABLE: Record<ModelName, string> = {
+  workspace: 'workspaces', userSetting: 'user_settings', modulePreference: 'module_preferences', project: 'projects',
+  goal: 'goals', task: 'tasks', event: 'events', habit: 'habits', habitLog: 'habit_logs', note: 'notes',
+  transaction: 'transactions', budget: 'budgets', studyRecord: 'study_records', fitnessRecord: 'fitness_records',
+  fileRecord: 'files', notification: 'notifications', automation: 'automations', template: 'templates',
+  activityLog: 'activity_log', record: 'records',
+};
+
 /** Tables are written in this order so that referenced rows exist before the rows that point at them. */
 export const MODEL_ORDER: ModelName[] = [
   'workspace', 'userSetting', 'modulePreference', 'project', 'goal', 'habit', 'task', 'habitLog', 'event', 'note',

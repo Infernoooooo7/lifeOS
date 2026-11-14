@@ -7,8 +7,14 @@ function create(): PrismaClient {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
   // Small pool: serverless instances each hold their own pool.
-  // Idle connections are released quickly so a pooler (Supabase/Neon) is not held open by sleeping instances.
-  const adapter = new PrismaPg({ connectionString: url, max: Number(process.env.DB_POOL_MAX ?? 5), idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000 });
+  // A long-lived server keeps warm connections for a minute (each new TLS connection costs a few round trips);
+  // DB_IDLE_MS lowers this on serverless hosts so sleeping instances do not hold a pooler's connections.
+  const adapter = new PrismaPg({
+    connectionString: url,
+    max: Number(process.env.DB_POOL_MAX ?? 5),
+    idleTimeoutMillis: Number(process.env.DB_IDLE_MS ?? 60_000),
+    connectionTimeoutMillis: 10_000,
+  });
   return new PrismaClient({ adapter });
 }
 

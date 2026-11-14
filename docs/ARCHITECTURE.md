@@ -105,6 +105,20 @@ stores a `conflicts` record (itself synced), so **every device** shows it in Set
 takes the next value of a per-user counter (`users.syncSeq`), which is the pull cursor. Because writers are serialised
 per user, a pull can never skip a concurrently committed change. Pulls are paginated across tables without gaps.
 
+Cost per request (measured by `scripts/dev/bench-api.mts`, which counts every statement):
+
+| Request | Queries |
+| --- | --- |
+| Idle poll (nothing new) — the most frequent request | 1 (session + account counter in one join) |
+| Save one edit | ~11 |
+| Upload 500 new records (3 batches) | 32 (one multi-row insert per table per batch) |
+| Pull with changes | 1 probe (`EXISTS` per table in one `UNION ALL`) + one query per table that changed |
+
+Sync polling uses an in-process rate limiter; login, registration and reset keep the shared Postgres limiter.
+Housekeeping (expired sessions, used reset tokens, idle rate-limit rows) runs at most hourly in the background,
+triggered by traffic (`src/server/maintenance.ts`). Every API response carries `x-request-id`; requests slower than
+800 ms or failing with 5xx log one JSON line with that id.
+
 **Client side** (`src/core/data/syncClient.ts`): debounced after local writes, on reconnect, on focus and every 30 s;
 one tab syncs at a time (Web Locks); edits made while a request is in flight stay queued with the acknowledged version
 as their new base; failures back off and never discard data. A 401 pauses sync and shows a banner — local data stays.

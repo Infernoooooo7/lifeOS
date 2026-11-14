@@ -7,13 +7,13 @@ Everything in this report was executed; nothing is listed as passing that was no
 | Suite | Tool | What it covers | Result |
 | --- | --- | --- | --- |
 | Unit | Vitest | Pure logic in `src/core` | **65 passed** |
-| API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices | **33 passed** |
+| API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices, housekeeping, query budget | **35 passed** |
 | End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser | **33 passed** (whole e2e run: 2.2 min, was 4.1) |
 | End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **19 passed** |
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
-Total: **98** unit/integration tests and **52** end-to-end tests, all passing on the final run.
+Total: **100** unit/integration tests and **52** end-to-end tests, all passing on the final run.
 
 ## Performance (`scripts/dev/perf.mjs`, `scripts/dev/inp.mjs`; Chromium, CPU throttled 4×, sample data)
 
@@ -28,6 +28,19 @@ Total: **98** unit/integration tests and **52** end-to-end tests, all passing on
 Causes found: an animated, blurred full-screen background forced every glass surface to re-blur each frame; backdrop
 blur on in-page cards, the dialog backdrop and large sheets; one IndexedDB live query per component instead of per
 collection; every editor field re-rendering on each keystroke.
+
+## Backend (`npx tsx scripts/dev/bench-api.mts`, local PostgreSQL 16)
+
+| Request | Queries before → after | Time before → after |
+| --- | --- | --- |
+| Idle sync poll | 3 → 1 | 3.3 → 1.1 ms |
+| Upload 500 new records | 587 → 32 | 587 → 376 ms |
+| Save one edit | 30 → 11 | 12.7 → 9.4 ms |
+| Full pull, existing account | 23 → 5 | 16.6 → 12.5 ms |
+| Account export | 25 → 9 | 32 → 15 ms |
+
+Remaining upload time is Prisma building the multi-row insert, not the database (the insert itself takes ~23 ms).
+API responses are gzip-compressed by the Next.js server (a 31 KB pull travels as ~1.9 KB).
 
 ## How to run
 

@@ -9,6 +9,8 @@ const DAY = 24 * 60 * 60 * 1000;
 export interface AuthContext {
   userId: string;
   sessionId: string;
+  /** The account's change counter when the request was authenticated (read in the same query). */
+  syncSeq: number;
 }
 
 function cookie(value: string, maxAgeSec: number): string {
@@ -39,7 +41,13 @@ export async function createSession(userId: string, deviceName: string): Promise
 export async function getAuth(req: Request): Promise<AuthContext | null> {
   const token = parseCookies(req)[SESSION_COOKIE];
   if (!token || token.length > 200) return null;
-  const session = await db().session.findUnique({ where: { tokenHash: sha256(token) } });
+  // One round trip: the session and the account's sync counter (which an idle sync poll needs) together.
+  const rows = await db().$queryRaw<{ id: string; userId: string; expiresAt: Date; lastSeenAt: Date; revokedAt: Date | null; syncSeq: bigint }[]>`
+    SELECT s.id, s."userId", s."expiresAt", s."lastSeenAt", s."revokedAt", u."syncSeq"
+    FROM sessions s JOIN users u ON u.id = s."userId"
+    WHERE s."tokenHash" = ${sha256(token)}
+    LIMIT 1`;
+  const session = rows[0];
   if (!session || session.revokedAt || session.expiresAt.getTime() < Date.now()) return null;
   // Rolling expiry, written at most every 10 minutes to keep reads cheap.
   if (Date.now() - session.lastSeenAt.getTime() > 10 * 60 * 1000) {
@@ -48,7 +56,7 @@ export async function getAuth(req: Request): Promise<AuthContext | null> {
       data: { lastSeenAt: new Date(), expiresAt: new Date(Date.now() + SESSION_DAYS * DAY) },
     });
   }
-  return { userId: session.userId, sessionId: session.id };
+  return { userId: session.userId, sessionId: session.id, syncSeq: Number(session.syncSeq) };
 }
 
 export async function requireAuth(req: Request): Promise<AuthContext> {

@@ -3,7 +3,8 @@ import { MAX_CHANGES_PER_PUSH } from '@/core/sync/protocol';
 import { requireAuth } from '../auth';
 import { db } from '../db';
 import { HttpError, assertSameOrigin, json, readBody } from '../http';
-import { rateLimit } from '../ratelimit';
+import { maybeRunMaintenance } from '../maintenance';
+import { rateLimit, rateLimitLocal } from '../ratelimit';
 import { exportAll, sync } from '../sync/engine';
 import * as auth from './auth';
 
@@ -28,8 +29,8 @@ const syncBody = z.object({
 const syncRoute: Handler = async (req) => {
   const ctx = await requireAuth(req);
   const body = await readBody(req, syncBody);
-  await rateLimit(`sync:${ctx.userId}`, 240, 60);
-  return json(await sync(ctx.userId, body.cursor, body.changes));
+  rateLimitLocal(`sync:${ctx.userId}`, 240, 60);
+  return json(await sync(ctx.userId, body.cursor, body.changes, 500, ctx.syncSeq));
 };
 
 const exportRoute: Handler = async (req) => {
@@ -76,15 +77,29 @@ const routes: Record<string, Handler> = {
 
 /** Framework-independent entry point (`Request` → `Response`), so the API is testable without Next.js. */
 export async function handle(req: Request): Promise<Response> {
+  const started = performance.now();
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const path = new URL(req.url).pathname.replace(/^\/api\//, '').replace(/\/$/, '');
+  const route = `${req.method} ${path}`;
+  let res: Response;
   try {
-    const path = new URL(req.url).pathname.replace(/^\/api\//, '').replace(/\/$/, '');
-    const handler = routes[`${req.method} ${path}`];
-    if (!handler) return json({ error: { code: 'not_found', message: 'Unknown endpoint.' } }, { status: 404 });
-    assertSameOrigin(req);
-    return await handler(req);
+    const handler = routes[route];
+    if (!handler) res = json({ error: { code: 'not_found', message: 'Unknown endpoint.' } }, { status: 404 });
+    else {
+      assertSameOrigin(req);
+      maybeRunMaintenance();
+      res = await handler(req);
+    }
   } catch (e) {
-    if (e instanceof HttpError) return json({ error: { code: e.code, message: e.message } }, { status: e.status, headers: e.headers });
-    console.error('api error', e);
-    return json({ error: { code: 'internal', message: 'Something went wrong on the server.' } }, { status: 500 });
+    if (e instanceof HttpError) res = json({ error: { code: e.code, message: e.message } }, { status: e.status, headers: e.headers });
+    else {
+      console.error(JSON.stringify({ level: 'error', requestId, route, error: e instanceof Error ? `${e.name}: ${e.message}` : String(e), stack: e instanceof Error ? e.stack?.split('\n').slice(1, 6).join(' | ') : undefined }));
+      res = json({ error: { code: 'internal', message: `Something went wrong on the server (reference ${requestId}).` } }, { status: 500 });
+    }
   }
+  // One structured line for anything slow or failed; routine fast requests stay quiet.
+  const ms = Math.round(performance.now() - started);
+  if (ms > 800 || res.status >= 500) console.log(JSON.stringify({ level: res.status >= 500 ? 'error' : 'warn', requestId, route, status: res.status, ms }));
+  res.headers.set('x-request-id', requestId);
+  return res;
 }

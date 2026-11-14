@@ -6,8 +6,9 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npx prisma migrate deploy && npx next start
+    # Migrations run once per deploy, in the build, so waking the free instance from sleep starts the server at once.
+    buildCommand: npm ci --include=dev && npm run build && npx prisma migrate deploy
+    startCommand: ./node_modules/.bin/next start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION

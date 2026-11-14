@@ -27,6 +27,8 @@ Things to know about the free tier:
 | `RESEND_API_KEY`, `EMAIL_FROM` | no | Enables password reset by e-mail through Resend. Without them, reset works with the recovery code. |
 | `DISABLE_REGISTRATION` | no | Set to `1` to close sign-ups on a private deployment |
 | `DB_POOL_MAX` | no | Connections per server instance (default 5) |
+| `DB_IDLE_MS` | no | How long idle database connections stay open (default 60000; lower it on serverless hosts) |
+| `DIRECT_URL` | no | Direct or session-mode connection for migrations when `DATABASE_URL` goes through a transaction pooler |
 
 Secrets belong in the host's environment settings — never in the repository. `.env` is git-ignored;
 `.env.example` documents the variables.
@@ -47,7 +49,8 @@ worker is generated at build time.
 ## Option B — Render
 
 Dashboard → **New → Blueprint** → choose the repository. `render.yaml` creates the web service and the database and
-wires `DATABASE_URL` between them. Migrations are applied by the start command.
+wires `DATABASE_URL` between them. Migrations are applied at the end of the build, so a free instance waking from
+sleep starts the server immediately.
 
 ## Option C — any Node host or a VPS
 
@@ -68,8 +71,8 @@ Put it behind HTTPS (the session cookie is `Secure` in production, and service w
 
 ## Updating
 
-Push to the deployed branch. Migrations in `prisma/migrations` are applied automatically on Vercel (build) and Render
-(start). Users see "A new version of LIFEOS is ready" and update with one tap; data on devices is untouched.
+Push to the deployed branch. Migrations in `prisma/migrations` are applied automatically during the build (Vercel and
+Render). Users see "A new version of LIFEOS is ready" and update with one tap; data on devices is untouched.
 
 ## Backups
 

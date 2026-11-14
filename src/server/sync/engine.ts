@@ -3,8 +3,9 @@ import { applyPatch, type Fields } from '@/core/sync/merge';
 import {
   COLLECTION_NAME, MAX_RECORD_BYTES, type Change, type SyncResponse, type WireConflict, type WireRecord,
 } from '@/core/sync/protocol';
+import { join, raw, sql } from '@/generated/prisma/internal/prismaNamespace';
 import { db } from '../db';
-import { MODEL_ORDER, MODELS, fromRow, modelFor, toRow, type ModelName, type RowLike } from './models';
+import { MODEL_ORDER, MODELS, TABLE, fromRow, modelFor, toRow, type ModelName, type RowLike } from './models';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Tx = any;
@@ -48,7 +49,7 @@ function parentsFirst(model: ModelName, changes: Change[]): Change[] {
  * The whole push runs in one transaction that holds the user's row lock, so each user's change
  * counter is strictly ordered and a pull can never skip a concurrently committed change.
  */
-export async function sync(userId: string, cursor: number, changes: Change[], pullLimit = 500): Promise<SyncResponse> {
+export async function sync(userId: string, cursor: number, changes: Change[], pullLimit = 500, knownHead?: number): Promise<SyncResponse> {
   const applied: WireRecord[] = [];
   const conflicts: WireConflict[] = [];
   const rejected: SyncResponse['rejected'] = [];
@@ -69,8 +70,9 @@ export async function sync(userId: string, cursor: number, changes: Change[], pu
     groups.get(model)!.push(change);
   }
 
+  let head = knownHead;
   if (groups.size) {
-    await db().$transaction(
+    head = await db().$transaction(
       async (tx: Tx) => {
         const locked: { syncSeq: bigint }[] = await tx.$queryRaw`SELECT "syncSeq" FROM users WHERE id = ${userId} FOR UPDATE`;
         if (!locked.length) throw new Error('user not found');
@@ -121,10 +123,32 @@ export async function sync(userId: string, cursor: number, changes: Change[], pu
             }
           }
 
+          // New records are inserted with one statement per table (parents first, so references inside the batch
+          // resolve); edits to existing records follow, so they may point at records created just above.
+          const creates: Record<string, unknown>[] = [];
+          const updates: Change[] = [];
           for (const change of parentsFirst(model, list)) {
-            const row = existing.get(change.id);
+            if (existing.has(change.id)) {
+              updates.push(change);
+              continue;
+            }
             const ua = Math.min(Number(change.ua) || now, now);
             const ca = Math.min(Number(change.ca) || ua, ua);
+            seq += BigInt(1);
+            creates.push({
+              ...toRow(model, change.c, change.patch as Fields, refExists),
+              id: change.id, userId, seq, createdAt: new Date(ca), updatedAt: new Date(ua),
+            });
+            known.get(model)!.add(change.id);
+          }
+          if (creates.length) {
+            const saved: RowLike[] = await delegate(tx, model).createManyAndReturn({ data: creates });
+            for (const row of saved) applied.push(wire(model, row));
+          }
+
+          for (const change of updates) {
+            const row = existing.get(change.id);
+            const ua = Math.min(Number(change.ua) || now, now);
             if (row) {
               const current = fromRow(model, row);
               if (current.c !== change.c) {
@@ -149,36 +173,30 @@ export async function sync(userId: string, cursor: number, changes: Change[], pu
               const data = { ...toRow(model, change.c, result.next, refExists), seq, updatedAt: new Date(Math.max(ua, row.updatedAt.getTime())) };
               const saved: RowLike = await delegate(tx, model).update({ where: { userId_id: { userId, id: change.id } }, data });
               applied.push(wire(model, saved));
-            } else {
-              seq += BigInt(1);
-              const data = {
-                ...toRow(model, change.c, change.patch as Fields, refExists),
-                id: change.id, userId, seq, createdAt: new Date(ca), updatedAt: new Date(ua),
-              };
-              const saved: RowLike = await delegate(tx, model).create({ data });
-              known.get(model)!.add(change.id);
-              applied.push(wire(model, saved));
             }
           }
         }
         // Conflict notices are stored as records of their own, so every device of the account sees them —
         // including the device whose value was replaced.
-        for (const c of conflicts) {
-          seq += BigInt(1);
-          await tx.record.create({
-            data: {
-              id: `cf:${randomUUID()}`, userId, seq, collection: 'conflicts',
-              extra: { recordId: c.id, c: c.c, field: c.field, kept: c.kept ?? null, discarded: c.discarded ?? null, at: new Date(now).toISOString() },
-            },
+        if (conflicts.length) {
+          await tx.record.createMany({
+            data: conflicts.map((c) => {
+              seq += BigInt(1);
+              return {
+                id: `cf:${randomUUID()}`, userId, seq, collection: 'conflicts',
+                extra: { recordId: c.id, c: c.c, field: c.field, kept: c.kept ?? null, discarded: c.discarded ?? null, at: new Date(now).toISOString() },
+              };
+            }),
           });
         }
         if (seq !== locked[0].syncSeq) await tx.user.update({ where: { id: userId }, data: { syncSeq: seq } });
+        return Number(seq);
       },
       { timeout: 30_000, maxWait: 10_000 },
     );
   }
 
-  const pulled = await pull(userId, cursor, pullLimit, new Set(applied.map((r) => r.id)));
+  const pulled = await pull(userId, cursor, pullLimit, new Set(applied.map((r) => r.id)), head);
   return { applied, conflicts, rejected, ...pulled };
 }
 
@@ -188,16 +206,28 @@ export async function pull(
   cursor: number,
   limit = 500,
   skip: Set<string> = new Set(),
+  knownHead?: number,
 ): Promise<Pick<SyncResponse, 'records' | 'cursor' | 'more'>> {
-  const user = await db().user.findUnique({ where: { id: userId }, select: { syncSeq: true } });
-  const head = Number(user?.syncSeq ?? 0);
-  if (!user || head <= cursor) return { records: [], cursor: Math.max(0, Math.min(cursor, head)), more: false };
+  let head = knownHead;
+  if (head === undefined) {
+    const user = await db().user.findUnique({ where: { id: userId }, select: { syncSeq: true } });
+    head = Number(user?.syncSeq ?? 0);
+  }
+  if (head <= cursor) return { records: [], cursor: Math.max(0, Math.min(cursor, head)), more: false };
 
+  // Which tables hold anything newer than the cursor? One round trip of index probes, so a pull reads only those.
+  const after = BigInt(Math.max(0, Math.floor(cursor)));
+  const probe = await db().$queryRaw<{ m: ModelName }[]>(
+    join(
+      MODEL_ORDER.map((m) => sql`SELECT ${m}::text AS m WHERE EXISTS (SELECT 1 FROM ${raw(`"${TABLE[m]}"`)} WHERE "userId" = ${userId} AND seq > ${after})`),
+      ' UNION ALL ',
+    ),
+  );
   const client = db() as Tx;
   const batches = await Promise.all(
-    MODEL_ORDER.map(async (model) => {
+    probe.map(({ m }) => m).map(async (model) => {
       const rows: RowLike[] = await delegate(client, model).findMany({
-        where: { userId, seq: { gt: BigInt(Math.max(0, Math.floor(cursor))) } },
+        where: { userId, seq: { gt: after } },
         orderBy: { seq: 'asc' },
         take: limit,
       });
