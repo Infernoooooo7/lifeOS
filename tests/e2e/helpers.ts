@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { sampleBackup } from './sample-data.mjs';
+import { sampleBackup } from '../../src/core/sample-data.mjs';
 
 export const INTERESTS = ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Relationships', 'Creativity', 'Self-growth'];
 

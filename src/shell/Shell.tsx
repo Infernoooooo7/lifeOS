@@ -496,14 +496,16 @@ function Onboarding({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
   const [interests, setInterests] = useState<string[]>([]);
   const [chosen, setChosen] = useState<Set<string> | null>(null);
+  const [example, setExample] = useState(false);
   const recommended = useMemo(() => new Set(recommendedFor(interests)), [interests]);
   const selection = chosen ?? recommended;
   const optional = MODULES.filter((m) => !m.core);
   const finish = async () => {
     for (const m of optional) await setModule(m.id, { enabled: selection.has(m.id) });
     setPrefs({ onboarded: true, interests });
+    if (example) await import('@/core/lib/sample').then((m) => m.loadSampleData());
     onDone();
-    toast('Welcome to LIFEOS. Press the + button any time to capture something.', { tone: 'good', duration: 6000 });
+    toast(example ? 'Welcome to LIFEOS. This is an example week — remove it any time in Settings → Backup & data.' : 'Welcome to LIFEOS. Press the + button any time to capture something.', { tone: 'good', duration: 6000 });
   };
   return (
     <div className="app-canvas fixed inset-0 z-[70] overflow-y-auto">
@@ -561,6 +563,12 @@ function Onboarding({ onDone }: { onDone: () => void }) {
               ))}
             </div>
           </section>
+        )}
+        {step === 2 && (
+          <label className={cx('glass mt-6 flex cursor-pointer items-start gap-3 !rounded-[20px] px-4 py-3', example && '!border-accent !bg-accent-soft')}>
+            <input type="checkbox" className="mt-1 size-4 accent-[var(--accent)]" checked={example} onChange={(e) => setExample(e.target.checked)} />
+            <span><span className="block font-medium">Start with an example week</span><span className="block text-sm text-muted">Tasks, events, habits, money, notes and people to explore. Remove it in one tap later (Settings → Backup &amp; data); your own entries are never touched.</span></span>
+          </label>
         )}
         <div className="mt-auto flex items-center gap-2 pt-8">
           {step > 0 && <Button variant="ghost" onClick={() => setStep(step - 1)}>Back</Button>}

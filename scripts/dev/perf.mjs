@@ -1,7 +1,7 @@
 // Performance probe: frame times while scrolling, long tasks while navigating, with optional CSS overrides.
 // Usage: node scripts/dev/perf.mjs <desktop|mobile> [label] [css-override]
 import { chromium, devices } from '@playwright/test';
-import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
+import { sampleBackup } from '../../src/core/sample-data.mjs';
 const [, , mode = 'desktop', label = 'base', css = ''] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
 const browser = await chromium.launch({ args: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist'] });

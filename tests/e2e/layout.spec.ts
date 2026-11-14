@@ -43,6 +43,7 @@ test('navigation matches the device: sidebar on desktop, tab bar and launcher on
     await expect(page.locator('nav[aria-label="Primary"]:visible')).toHaveCount(0);
     await sidebar.getByRole('link', { name: 'Finance' }).click();
     await expect(page).toHaveURL(/\/app\/finance$/);
+    await expect(page.getByRole('heading', { name: 'Finance', level: 1 })).toBeVisible();
     // keyboard: "g t" goes to Tasks, "?" lists shortcuts
     await page.locator('body').press('g');
     await page.locator('body').press('t');

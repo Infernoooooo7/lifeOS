@@ -227,6 +227,39 @@ function Categories() {
   );
 }
 
+function ExampleData() {
+  const [count, setCount] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = () => void import('@/core/lib/sample').then((m) => m.countSampleData()).then(setCount);
+  useEffect(refresh, []);
+  return (
+    <Card title="Example data">
+      {count ? (
+        <Row title={`${count} example item${count === 1 ? '' : 's'} on this device`} hint="Remove them when you are ready to start fresh. Only the example items go; everything you created stays.">
+          <Button variant="danger" size="sm" icon="trash" disabled={busy} onClick={async () => {
+            if (!(await confirmDialog({ title: 'Remove the example week?', body: `This deletes the ${count} example items (they go to the trash). Your own records are not affected.`, danger: true, confirmLabel: 'Remove example data' }))) return;
+            setBusy(true);
+            const n = await import('@/core/lib/sample').then((m) => m.removeSampleData());
+            setBusy(false);
+            refresh();
+            toast(`Removed ${n} example item${n === 1 ? '' : 's'}`, { tone: 'good' });
+          }}>Remove example data</Button>
+        </Row>
+      ) : (
+        <Row title="Explore with an example week" hint="Adds realistic tasks, events, habits, money, notes and people around today, marked as examples so they can be removed in one step.">
+          <Button size="sm" icon="sparkles" disabled={busy || count === null} onClick={async () => {
+            setBusy(true);
+            const n = await import('@/core/lib/sample').then((m) => m.loadSampleData());
+            setBusy(false);
+            refresh();
+            toast(`Added ${n} example items`, { tone: 'good', action: { label: 'Go home', run: () => navigate('/') } });
+          }}>Load example week</Button>
+        </Row>
+      )}
+    </Card>
+  );
+}
+
 function DataSection() {
   const identity = useApp((s) => s.identity);
   const activity = useRecords('activity');
@@ -312,6 +345,7 @@ function DataSection() {
           </>
         )}
       </Card>
+      <ExampleData />
       <Card title="Import from other apps">
         <AppImport />
       </Card>

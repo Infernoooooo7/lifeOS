@@ -1,6 +1,6 @@
 // Interaction latency probe (Event Timing API) for common actions, CPU throttled 4x.
 import { chromium, devices } from '@playwright/test';
-import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
+import { sampleBackup } from '../../src/core/sample-data.mjs';
 const [, , mode = 'desktop', css = ''] = process.argv;
 const base = 'http://localhost:3100';
 const browser = await chromium.launch();

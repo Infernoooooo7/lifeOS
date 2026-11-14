@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { isPhone, restoreSample, startLocal } from './helpers';
-import { sampleBackup } from './sample-data.mjs';
+import { sampleBackup } from '../../src/core/sample-data.mjs';
 
 test.describe('onboarding and modules', () => {
   test('activates only the modules that match the chosen interests', async ({ page }) => {
@@ -412,5 +412,32 @@ test.describe('plan my day', () => {
     await sheet.getByRole('button', { name: /^Add \d+ time block/ }).click();
     await expect(page.getByText(/^Added \d+ time block/)).toBeVisible();
     await expect(page.locator('#main-scroll').getByRole('button', { name: /Write homepage copy|Review pull requests/ }).first()).toBeVisible();
+  });
+});
+
+test.describe('example week', () => {
+  test('can be chosen at onboarding and removed later without touching your own records', async ({ page }) => {
+    await page.goto('/app');
+    await page.getByRole('button', { name: 'Use on this device without an account' }).click();
+    for (const interest of ['Work', 'Money']) await page.locator('section').getByRole('button', { name: interest, exact: true }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByText('Start with an example week').click();
+    await page.getByRole('button', { name: 'Start using LIFEOS' }).click();
+    await expect(page.getByText(/This is an example week/)).toBeVisible();
+    await page.goto('/app/tasks');
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^Write homepage copy/ })).toBeVisible();
+    await page.getByLabel('Quick add task').fill('My real task');
+    await page.getByLabel('Quick add task').press('Enter');
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^My real task/ })).toBeVisible();
+
+    await page.goto('/app/settings/data');
+    await page.getByRole('button', { name: 'Remove example data' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Remove example data' }).click();
+    await expect(page.getByText(/^Removed \d+ example items/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Load example week' })).toBeVisible();
+    await page.goto('/app/tasks');
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^My real task/ })).toBeVisible();
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^Write homepage copy/ })).toHaveCount(0);
   });
 });

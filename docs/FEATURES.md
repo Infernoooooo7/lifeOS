@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**315 capabilities in 25 modules** — 302 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**316 capabilities in 25 modules** — 303 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -39,7 +39,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 37 | 0 | 1 | 2 |
+| Settings | System | 38 | 0 | 1 | 2 |
 
 ## Home
 
@@ -490,6 +490,7 @@ _Make it yours._ Module id `settings` · always on
 
 | | Capability | Description | Id |
 | --- | --- | --- | --- |
+| ✅ | Example week | Explore with realistic sample data from onboarding or Settings, marked so it can be removed in one step without touching your own records. | `platform.example-week` |
 | ✅ | Import from Todoist | Todoist CSV exports become projects with sections, labels, sub-tasks, priorities, dates and comments. | `platform.import-todoist` |
 | ✅ | Import from Google Keep | Takeout notes and checklists with labels, pins and archive state; the trash is skipped. | `platform.import-keep` |
 | ✅ | Import Markdown | Notes from Notion, Obsidian, Bear or any .md files, with titles and tags from front matter. | `platform.import-markdown` |

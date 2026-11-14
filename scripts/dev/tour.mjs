@@ -2,7 +2,7 @@
 // Usage: [THEME=light|dark] node scripts/dev/tour.mjs <outDir> <desktop|tablet|mobile> [route ...]
 import { chromium, devices } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
+import { sampleBackup } from '../../src/core/sample-data.mjs';
 
 const [, , out = '/tmp/tour', mode = 'desktop', ...only] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
