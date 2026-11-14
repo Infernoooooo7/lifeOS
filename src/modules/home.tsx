@@ -12,6 +12,7 @@ import { addDays, diffDays, fmtDuration, fmtTime, greeting, parseDate, relativeD
 import { goalProgress } from '@/core/lib/goals';
 import { byDate, isDue, periodProgress, streaks } from '@/core/lib/habits';
 import { DEFAULT_RATES, fmtMoney, inMonth, totals, type Txn } from '@/core/lib/money';
+import { lastContacts, reconnectQueue, upcomingBirthdays } from '@/core/lib/people';
 import { parseQuickTask } from '@/core/lib/quickadd';
 import { compareTasks, isDone, isDueToday, isOpen, isOverdue, type TaskLike } from '@/core/lib/tasks';
 import { Page, type ModuleProps } from '@/shell/Page';
@@ -391,6 +392,40 @@ function RecentActivity() {
   );
 }
 
+function KeepInTouch() {
+  const people = useRecords('people');
+  const interactions = useRecords('interactions');
+  const now = useNow();
+  const live = useMemo(() => people.filter((p) => !p.archived), [people]);
+  const last = useMemo(() => lastContacts(live, interactions), [live, interactions]);
+  const due = reconnectQueue(live, last, now, ['overdue', 'due']).slice(0, 4);
+  const birthdays = upcomingBirthdays(live, now, 14).slice(0, 2);
+  if (!live.length) return <Faint>Add people in the People module to see who is due a catch-up.</Faint>;
+  if (!due.length && !birthdays.length) return <Faint>You are in touch with everyone. No birthdays in the next two weeks.</Faint>;
+  return (
+    <ul className="space-y-1">
+      {due.map(({ person, status }) => (
+        <li key={person.id}>
+          <button type="button" className="row w-full !px-1.5 text-left" onClick={() => navigate(`/people/${person.id}`)}>
+            <Icon name="refresh" size={15} className={status.state === 'overdue' ? 'flex-none text-bad' : 'flex-none text-warn'} />
+            <span className="min-w-0 flex-1 truncate text-sm">{titleOf(person)}</span>
+            <span className="flex-none text-xs text-faint">{status.state === 'overdue' ? `${-(status.daysLeft ?? 0)}d overdue` : 'due today'}</span>
+          </button>
+        </li>
+      ))}
+      {birthdays.map((b) => (
+        <li key={`b-${b.person.id}`}>
+          <button type="button" className="row w-full !px-1.5 text-left" onClick={() => navigate(`/people/${b.person.id}`)}>
+            <Icon name="sparkles" size={15} className="flex-none text-accent" />
+            <span className="min-w-0 flex-1 truncate text-sm">{titleOf(b.person)}’s birthday{b.turning ? ` (${b.turning})` : ''}</span>
+            <span className="flex-none text-xs text-faint">{b.daysLeft === 0 ? 'today' : b.daysLeft === 1 ? 'tomorrow' : `in ${b.daysLeft}d`}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 const WIDGETS: Record<string, WidgetDef> = {
   today: { name: 'Daily overview', description: "Today's tasks, events, habits and focus", icon: 'sun', module: 'home', size: 'l', render: () => <DailyOverview /> },
   week: { name: 'Weekly overview', description: 'Completed tasks and habit check-ins, last 7 days', icon: 'chart', module: 'home', size: 'l', render: () => <WeeklyOverview /> },
@@ -406,6 +441,7 @@ const WIDGETS: Record<string, WidgetDef> = {
   reminders: { name: 'Reminders', description: 'Unread notifications', icon: 'bell', module: 'home', size: 'm', render: () => <RemindersWidget /> },
   capture: { name: 'Quick capture', description: 'One-tap capture buttons', icon: 'plus', module: 'home', size: 'm', render: () => <CaptureWidget /> },
   stats: { name: 'Personal statistics', description: 'Totals computed from your data', icon: 'trending', module: 'home', size: 'm', render: () => <PersonalStats /> },
+  people: { name: 'Keep in touch', description: 'Who is due a catch-up, and birthdays soon', icon: 'users', module: 'people', size: 'm', link: '/people', render: () => <KeepInTouch /> },
   activity: { name: 'Recent activity', description: 'What you created and completed', icon: 'activity', module: 'home', size: 'm', render: () => <RecentActivity /> },
 };
 
@@ -414,7 +450,7 @@ const TEMPLATES: Record<string, { name: string; description: string; widgets: [s
   focus: { name: 'Focus', description: 'Only what needs doing now', widgets: [['tasks', 'xl'], ['focus', 'm'], ['deadlines', 'm'], ['habits', 'm']] },
   planner: { name: 'Planner', description: 'Week, deadlines and projects', widgets: [['week', 'l'], ['events', 'l'], ['deadlines', 'm'], ['projects', 'm'], ['goals', 'm'], ['tasks', 'xl']] },
   money: { name: 'Money', description: 'Finance first', widgets: [['finance', 'l'], ['reminders', 'l'], ['goals', 'm'], ['deadlines', 'm'], ['capture', 'm']] },
-  wellbeing: { name: 'Wellbeing', description: 'Habits, focus and reflection', widgets: [['habits', 'xl'], ['focus', 'm'], ['today', 'l'], ['stats', 'm'], ['notes', 'm']] },
+  wellbeing: { name: 'Wellbeing', description: 'Habits, focus, people and reflection', widgets: [['habits', 'xl'], ['focus', 'm'], ['people', 'm'], ['today', 'l'], ['stats', 'm'], ['notes', 'm']] },
 };
 const fromTemplate = (key: string): WidgetInstance[] => TEMPLATES[key].widgets.map(([type, size]) => ({ id: uid().slice(0, 8), type, size }));
 

@@ -47,7 +47,7 @@ type F = [id: string, name: string, description: string, status?: FeatureStatus,
 const feats = (module: string, list: F[]): FeatureDef[] =>
   list.map(([id, name, description, status = 'implemented', note, deps]) => ({ id: `${module}.${id}`, name, description, status, ...(note ? { note } : {}), ...(deps ? { deps } : {}) }));
 
-export const INTERESTS = ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth'] as const;
+export const INTERESTS = ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Relationships', 'Creativity', 'Self-growth'] as const;
 
 export const MODULES: ModuleDef[] = [
   {
@@ -330,6 +330,22 @@ export const MODULES: ModuleDef[] = [
       ['notes', 'Software notes', 'How-tos and settings notes per application.'],
       ['cleanup', 'Digital cleanup', 'Guided cleanup checklists you can run again and again.'],
       ['accounts', 'Account organisation', 'An index of your online accounts with password-manager links. Passwords are never stored.'],
+    ]),
+  },
+  {
+    id: 'people', name: 'People', tagline: 'Stay close to the people who matter', icon: 'users', hue: 350, category: 'Lifestyle', interests: ['Relationships'],
+    features: feats('people', [
+      ['directory', 'People directory', 'Everyone you care about, grouped by circle (family, close friends, work…) with list, card and table views.'],
+      ['cadence', 'Keep-in-touch cadence', 'Choose how often to catch up with each person — weekly to yearly.'],
+      ['reconnect', 'Reconnect queue', 'Who is overdue or due soon, most overdue first.'],
+      ['log', 'Interaction log', 'Calls, messages, meetings and gifts, with notes, on one timeline per person.'],
+      ['quicklog', 'One-tap logging', 'Log a call, message or meeting from the overview or a person’s page; the catch-up clock resets.'],
+      ['birthdays', 'Birthdays and ages', 'Upcoming birthdays with the age each person turns; 29 February handled.'],
+      ['reminders', 'Keep-in-touch reminders', 'A reminder when a catch-up is due and before birthdays (Settings → Notifications).', 'implemented', undefined, ['settings']],
+      ['profile', 'Person page', 'Contact buttons, how you met, interests, gift ideas, notes and the full history of your contact.'],
+      ['gifts', 'Gift ideas', 'Keep gift ideas with the person, ready before the birthday.'],
+      ['widget', 'Keep-in-touch widget', 'A home-screen widget with who to reconnect with and the next birthdays.', 'implemented', undefined, ['home']],
+      ['import', 'Import people from CSV', 'Bring contacts in from a spreadsheet or another app’s CSV export, with column mapping.'],
     ]),
   },
   {

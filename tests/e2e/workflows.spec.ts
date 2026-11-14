@@ -260,3 +260,45 @@ test.describe('data ownership', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 });
+
+test.describe('people', () => {
+  test('keep-in-touch: a person becomes due, one tap logs a call and resets the clock', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/people');
+    // Asha (every 2 weeks, last met 20 days ago) is overdue; her birthday is in 6 days.
+    const reconnect = page.locator('section', { has: page.getByRole('heading', { name: 'Reconnect' }) });
+    await expect(reconnect.getByText('Asha Rao')).toBeVisible();
+    await expect(reconnect.getByText('6 days overdue')).toBeVisible();
+    await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Birthdays coming up' }) }).getByText('Asha Rao')).toBeVisible();
+
+    await reconnect.getByRole('button', { name: 'Log call with Asha Rao' }).click();
+    await expect(page.getByText('Called · Asha Rao')).toBeVisible();
+    await expect(reconnect.getByText('Asha Rao')).toHaveCount(0);
+
+    // The person page shows the history, newest first, and the next catch-up.
+    await page.goto('/app/people/pe-asha');
+    await expect(page.getByRole('heading', { name: 'Asha Rao', level: 1 })).toBeVisible();
+    await expect(page.getByText(/next catch-up in 14 days/i)).toBeVisible();
+    await expect(page.locator('#main-scroll .row').first()).toContainText('Called');
+    await expect(page.getByText('Trail running vest')).toBeVisible();
+  });
+
+  test('a new person can be added with a rhythm and found through search', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/people');
+    await page.getByRole('button', { name: 'Add someone' }).click();
+    const editor = page.getByRole('dialog', { name: 'New person' });
+    await editor.getByLabel('Name').fill('Kabir Shah');
+    await editor.getByLabel('Keep in touch').selectOption({ label: 'Every week' });
+    await editor.getByRole('button', { name: 'Add person' }).click();
+    await expect(page.getByText('Person added')).toBeVisible();
+    await page.getByRole('tab', { name: 'People' }).click();
+    await expect(page.locator('#main-scroll .row', { hasText: 'Kabir Shah' })).toContainText('In 7 days');
+    await page.keyboard.press('Control+k');
+    await page.keyboard.type('kabir');
+    await page.getByRole('option', { name: /Kabir Shah/ }).click();
+    await expect(page).toHaveURL(/\/app\/people\/[^/]+$/);
+    await expect(page.getByRole('heading', { name: 'Kabir Shah', level: 1 })).toBeVisible();
+  });
+});

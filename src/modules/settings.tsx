@@ -145,7 +145,7 @@ function Notifications({ prefs, set }: { prefs: Prefs; set: (p: Partial<Prefs>) 
   const patch = (p: Partial<Prefs['notify']>) => set({ notify: { ...n, ...p } });
   const supported = typeof Notification !== 'undefined';
   const permission = supported ? Notification.permission : 'unsupported';
-  const kinds: [keyof Prefs['notify'], string, string][] = [['tasks', 'Tasks', 'Due today, due soon and overdue'], ['events', 'Events', 'Before an event starts'], ['habits', 'Habits', 'At a habit’s reminder time, if not done yet'], ['renewals', 'Renewals and expiries', 'Subscriptions, licences, documents and maintenance'], ['dates', 'Important dates', 'Birthdays, anniversaries and other dates']];
+  const kinds: [keyof Prefs['notify'], string, string][] = [['tasks', 'Tasks', 'Due today, due soon and overdue'], ['events', 'Events', 'Before an event starts'], ['habits', 'Habits', 'At a habit’s reminder time, if not done yet'], ['renewals', 'Renewals and expiries', 'Subscriptions, licences, documents and maintenance'], ['dates', 'Important dates', 'Birthdays, anniversaries and other dates'], ['people', 'People', 'When a catch-up is due, and birthdays of people you keep in touch with']];
   return (
     <>
       <Card title="What to be reminded about">{kinds.map(([k, title, hint]) => <Row key={k} title={title} hint={hint}><Switch checked={!!n[k]} onChange={(v) => patch({ [k]: v })} label={`${title} reminders`} /></Row>)}

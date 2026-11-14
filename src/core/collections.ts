@@ -1,4 +1,5 @@
 import { CURRENCIES } from './lib/money';
+import { CADENCES, INTERACTION_KINDS } from './lib/people';
 import { PRIORITIES, TASK_STATUSES } from './lib/tasks';
 
 /**
@@ -93,6 +94,7 @@ export const OPTION_SETS: Record<string, string[]> = {
   incomeCategories: ['Salary', 'Freelance', 'Business', 'Interest', 'Dividends', 'Refund', 'Gift', 'Other'],
   eventCategories: ['Personal', 'Work', 'Family', 'Health', 'Appointment', 'Travel', 'Study', 'Social'],
   habitCategories: ['Health', 'Mind', 'Learning', 'Work', 'Home', 'Relationships', 'Finance'],
+  peopleCircles: ['Family', 'Close friends', 'Friends', 'Work', 'Community', 'Other'],
   lifeAreas: ['Career', 'Health', 'Finance', 'Learning', 'Relationships', 'Personal growth', 'Fitness', 'Fun', 'Home'],
   fileCategories: ['Identity', 'Finance', 'Insurance', 'Medical', 'Education', 'Property', 'Vehicle', 'Work', 'Receipts', 'Other'],
   shoppingCategories: ['Produce', 'Dairy', 'Bakery', 'Pantry', 'Meat & fish', 'Frozen', 'Beverages', 'Household', 'Personal care', 'Other'],
@@ -337,6 +339,36 @@ const defs: CollectionDef[] = [
   {
     id: 'maintenance', label: 'Maintenance', one: 'Maintenance item', icon: 'wrench', title: 'name', views: ['list', 'table', 'calendar'], date: 'nextDue', sort: { k: 'nextDue', dir: 'asc' },
     fields: [text('name', 'Job', { req: true, ph: 'e.g. Car service' }), select('kind', 'Type', ['vehicle', 'household', 'other'], { def: 'vehicle', list: true, half: true }), text('asset', 'Vehicle / appliance', { list: true, half: true }), date('lastDone', 'Last done', { half: true }), num('intervalDays', 'Repeat every', { unit: 'days', half: true, min: 0 }), date('nextDue', 'Next due', { list: true, half: true }), money('cost', 'Typical cost', { half: true, min: 0 }), notes()],
+  },
+  // ── People ───────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'people', label: 'People', one: 'Person', icon: 'users', title: 'name', views: ['list', 'gallery', 'table'], sort: { k: 'name', dir: 'asc' }, archive: true,
+    hint: 'Set how often you want to be in touch and LIFEOS will remind you when a catch-up is due.',
+    fields: [
+      text('name', 'Name', { req: true }),
+      select('circle', 'Circle', 'peopleCircles', { def: 'Friends', list: true, half: true }),
+      select('cadenceDays', 'Keep in touch', CADENCES as unknown as Opt[], { def: 30, list: true, half: true }),
+      date('birthday', 'Birthday', { half: true, help: 'Use any year if you do not know it; years before 1900 hide the age.' }),
+      date('lastContactAt', 'Last in touch', { half: true, help: 'Filled in automatically when you log a call, message or meeting.' }),
+      text('phone', 'Phone', { half: true }),
+      text('email', 'E-mail', { half: true }),
+      text('company', 'Works at', { half: true }),
+      text('city', 'Lives in', { half: true }),
+      text('howMet', 'How you met'),
+      tags('tags', 'Interests and tags'),
+      area('giftIdeas', 'Gift ideas'),
+      notes('Notes'),
+    ],
+  },
+  {
+    id: 'interactions', label: 'Interactions', one: 'Interaction', icon: 'history', title: 'summary', views: ['list', 'table', 'calendar'], date: 'date', sort: { k: 'date', dir: 'desc' },
+    fields: [
+      rel('personId', 'Person', 'people', { req: true, list: true }),
+      select('kind', 'How', INTERACTION_KINDS.map((k) => k), { def: 'message', list: true, half: true }),
+      date('date', 'When', { req: true, def: '@today', list: true, half: true }),
+      text('summary', 'What happened', { ph: 'e.g. Coffee and a walk' }),
+      notes('Notes'),
+    ],
   },
   { id: 'checklists', label: 'Checklists', one: 'Checklist', icon: 'checklist', views: ['gallery', 'list'], fields: [text('title', 'Checklist', { req: true }), checklist('items', 'Items'), tags('tags', 'Tags')] },
   { id: 'countdowns', label: 'Countdowns', one: 'Countdown', icon: 'alarm', views: ['gallery', 'list'], date: 'date', fields: [text('title', 'Counting down to', { req: true }), date('date', 'Date', { req: true, timeOptional: true }), color('color', 'Colour')] },

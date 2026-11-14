@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**290 capabilities in 24 modules** — 277 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**301 capabilities in 25 modules** — 288 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -32,6 +32,7 @@
 | Documents | Lifestyle | 6 | 1 | 0 | 1 |
 | Entertainment | Lifestyle | 6 | 1 | 0 | 0 |
 | Digital life | Lifestyle | 8 | 0 | 0 | 0 |
+| People | Lifestyle | 11 | 0 | 0 | 0 |
 | Life admin | Lifestyle | 10 | 0 | 0 | 0 |
 | Utilities | Lifestyle | 10 | 0 | 0 | 0 |
 | Automation | System | 9 | 0 | 0 | 2 |
@@ -355,6 +356,24 @@ _Your accounts, apps and devices._ Module id `digital`
 | ✅ | Software notes | How-tos and settings notes per application. | `digital.notes` |
 | ✅ | Digital cleanup | Guided cleanup checklists you can run again and again. | `digital.cleanup` |
 | ✅ | Account organisation | An index of your online accounts with password-manager links. Passwords are never stored. | `digital.accounts` |
+
+## People
+
+_Stay close to the people who matter._ Module id `people`
+
+| | Capability | Description | Id |
+| --- | --- | --- | --- |
+| ✅ | People directory | Everyone you care about, grouped by circle (family, close friends, work…) with list, card and table views. | `people.directory` |
+| ✅ | Keep-in-touch cadence | Choose how often to catch up with each person — weekly to yearly. | `people.cadence` |
+| ✅ | Reconnect queue | Who is overdue or due soon, most overdue first. | `people.reconnect` |
+| ✅ | Interaction log | Calls, messages, meetings and gifts, with notes, on one timeline per person. | `people.log` |
+| ✅ | One-tap logging | Log a call, message or meeting from the overview or a person’s page; the catch-up clock resets. | `people.quicklog` |
+| ✅ | Birthdays and ages | Upcoming birthdays with the age each person turns; 29 February handled. | `people.birthdays` |
+| ✅ | Keep-in-touch reminders | A reminder when a catch-up is due and before birthdays (Settings → Notifications). | `people.reminders` |
+| ✅ | Person page | Contact buttons, how you met, interests, gift ideas, notes and the full history of your contact. | `people.profile` |
+| ✅ | Gift ideas | Keep gift ideas with the person, ready before the birthday. | `people.gifts` |
+| ✅ | Keep-in-touch widget | A home-screen widget with who to reconnect with and the next birthdays. | `people.widget` |
+| ✅ | Import people from CSV | Bring contacts in from a spreadsheet or another app’s CSV export, with column mapping. | `people.import` |
 
 ## Life admin
 

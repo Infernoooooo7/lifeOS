@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { isPhone, restoreSample, startLocal, trackErrors } from './helpers';
 
-const ROUTES = ['', 'tasks', 'tasks/board', 'tasks/table', 'tasks/timeline', 'calendar', 'projects', 'projects/p-web', 'notes', 'notes/graph', 'habits', 'habits/stats', 'goals', 'goals/okrs', 'finance', 'finance/transactions', 'finance/reports', 'learning', 'learning/flashcards', 'health', 'journal', 'focus', 'shopping', 'travel', 'travel/trip-1', 'files', 'entertainment', 'digital', 'admin', 'utilities', 'utilities/calculator', 'automation', 'insights', 'insights/productivity', 'marketplace', 'settings', 'settings/data', 'settings/sync'];
+const ROUTES = ['', 'tasks', 'tasks/board', 'tasks/table', 'tasks/timeline', 'calendar', 'projects', 'projects/p-web', 'notes', 'notes/graph', 'habits', 'habits/stats', 'goals', 'goals/okrs', 'finance', 'finance/transactions', 'finance/reports', 'learning', 'learning/flashcards', 'health', 'journal', 'focus', 'shopping', 'travel', 'travel/trip-1', 'files', 'entertainment', 'digital', 'admin', 'people', 'people/people', 'people/log', 'people/pe-asha', 'utilities', 'utilities/calculator', 'automation', 'insights', 'insights/productivity', 'marketplace', 'settings', 'settings/data', 'settings/sync'];
 
 test('every module renders without errors or horizontal overflow', async ({ page }) => {
   test.setTimeout(240_000);

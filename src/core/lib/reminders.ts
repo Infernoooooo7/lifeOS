@@ -1,5 +1,6 @@
 import type { Fields } from '@/core/sync/merge';
 import { addDays, diffDays, nextAnnual, parseDate, ymd } from './dates';
+import { contactStatus, lastContacts, upcomingBirthdays } from './people';
 import { occurrences, type Recurrence } from './recurrence';
 
 /**
@@ -11,7 +12,7 @@ export interface DueNotification {
   id: string;
   title: string;
   body: string;
-  kind: 'task' | 'event' | 'habit' | 'renewal' | 'date' | 'document' | 'budget';
+  kind: 'task' | 'event' | 'habit' | 'renewal' | 'date' | 'document' | 'budget' | 'person';
   source: string;
   sourceId: string;
   dueAt: string;
@@ -29,6 +30,8 @@ export interface ReminderInput {
   files?: R[];
   licenses?: R[];
   maintenance?: R[];
+  people?: R[];
+  interactions?: R[];
 }
 
 export interface ReminderPrefs {
@@ -37,6 +40,8 @@ export interface ReminderPrefs {
   habits?: boolean;
   renewals?: boolean;
   dates?: boolean;
+  /** keep-in-touch and birthday reminders from People */
+  people?: boolean;
   /** minutes before an event when it has no reminders of its own */
   eventLead?: number;
   /** days before a renewal / important date */
@@ -114,6 +119,29 @@ export function dueNotifications(input: ReminderInput, now: Date, prefs: Reminde
   if (prefs.dates !== false) {
     upcoming(input.dates?.filter((d) => d.repeatYearly !== false), 'date', 'dates', 'date', (r, d) => `${String(r.kind ?? 'Date').replace(/^./, (c) => c.toUpperCase())} ${when(d)}`, true);
     upcoming(input.dates?.filter((d) => d.repeatYearly === false), 'date', 'dates', 'date', (_, d) => `Coming up ${when(d)}`);
+  }
+
+  if (prefs.people !== false && input.people?.length) {
+    const people = input.people.filter(live);
+    const last = lastContacts(people, input.interactions ?? []);
+    for (const p of people) {
+      const st = contactStatus(p, last.get(p.id), now);
+      // One reminder per due date: logging a catch-up moves the due date, so the next one gets a new id.
+      if ((st.state === 'due' || st.state === 'overdue') && st.dueAt) {
+        out.push({
+          id: `nt:person:${p.id}:reconnect:${ymd(st.dueAt)}`, title: 'Time to reconnect',
+          body: `${String(p.name ?? '')}${st.sinceDays !== null ? ` — last in touch ${st.sinceDays} day${st.sinceDays === 1 ? '' : 's'} ago` : ''}`,
+          kind: 'person', source: 'people', sourceId: p.id, dueAt: st.dueAt.toISOString(),
+        });
+      }
+    }
+    for (const b of upcomingBirthdays(people, now, leadDays)) {
+      out.push({
+        id: `nt:person:${b.person.id}:birthday:${ymd(b.date)}`, title: b.daysLeft === 0 ? 'Birthday today' : 'Birthday coming up',
+        body: `${String(b.person.name ?? '')}${b.turning ? ` turns ${b.turning}` : ''}${b.daysLeft > 0 ? ` ${b.daysLeft === 1 ? 'tomorrow' : `in ${b.daysLeft} days`}` : ''}`,
+        kind: 'person', source: 'people', sourceId: b.person.id, dueAt: b.date.toISOString(),
+      });
+    }
   }
   return out;
 }

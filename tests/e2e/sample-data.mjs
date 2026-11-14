@@ -93,6 +93,15 @@ export function sampleBackup(now = new Date()) {
   add('bookmarks', 'bm-1', { title: 'MDN Web Docs', url: 'https://developer.mozilla.org', folder: 'Reference', tags: ['dev'] });
   add('devices', 'dev-1', { name: 'Pixel 9', kind: 'phone', brand: 'Google', warrantyUntil: d(300) });
   add('dates', 'dt-1', { name: 'Asha', kind: 'birthday', date: `1992-${pad(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6).getMonth() + 1)}-${pad(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6).getDate())}`, repeatYearly: true });
+  const bday = (year, offset) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset); return `${year}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; };
+  add('people', 'pe-asha', { name: 'Asha Rao', circle: 'Close friends', cadenceDays: 14, birthday: bday(1992, 6), phone: '+91 98450 11223', city: 'Bengaluru', howMet: 'College, first year', tags: ['hiking', 'design'], giftIdeas: 'Trail running vest\nA good sketchbook' });
+  add('people', 'pe-mom', { name: 'Mom', circle: 'Family', cadenceDays: 7, phone: '+91 98450 00001' });
+  add('people', 'pe-ravi', { name: 'Ravi Kumar', circle: 'Work', cadenceDays: 30, company: 'Northwind', email: 'ravi@example.com', howMet: 'Former team lead' });
+  add('people', 'pe-meera', { name: 'Meera Iyer', circle: 'Friends', cadenceDays: 90, birthday: bday(1995, 25), city: 'Pune' });
+  add('interactions', 'in-1', { personId: 'pe-asha', kind: 'meet', date: d(-20), summary: 'Coffee and a long walk' });
+  add('interactions', 'in-2', { personId: 'pe-mom', kind: 'call', date: d(-2), summary: 'Sunday call' });
+  add('interactions', 'in-3', { personId: 'pe-ravi', kind: 'message', date: d(-29), summary: 'Congratulated him on the launch' });
+  add('interactions', 'in-4', { personId: 'pe-mom', kind: 'call', date: d(-9), summary: 'Planned the Diwali visit' });
   add('contacts', 'ct-1', { name: 'Dr. Mehta', relation: 'doctor', emergency: true, phone: '+91 98765 43210' });
   add('maintenance', 'mt-1', { name: 'Car service', kind: 'vehicle', asset: 'Honda City', intervalDays: 180, nextDue: d(12) });
   add('checklists', 'cl-1', { title: 'Travel essentials', items: [{ id: 'a', text: 'Passport', done: false }, { id: 'b', text: 'Charger', done: true }] });

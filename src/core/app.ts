@@ -94,7 +94,7 @@ export interface Prefs {
   quickActions: string[];
   onboarded: boolean;
   interests: string[];
-  notify: { tasks: boolean; events: boolean; habits: boolean; renewals: boolean; dates: boolean; browser: boolean; asked: boolean; eventLead: number; leadDays: number };
+  notify: { tasks: boolean; events: boolean; habits: boolean; renewals: boolean; dates: boolean; people: boolean; browser: boolean; asked: boolean; eventLead: number; leadDays: number };
   quiet: { enabled: boolean; from: string; to: string };
   /** preferred view per module/collection */
   views: Record<string, string>;
@@ -108,7 +108,7 @@ export const DEFAULT_PREFS: Prefs = {
   theme: 'dark', accentHue: 215, density: 'default', motion: 'full', widgetStyle: 'glass', weekStart: 1, hour12: true, dateStyle: 'dmy', currency: 'INR',
   mode: 'standard', spatialQuality: 'auto', sidebar: [], sidebarCollapsed: false, rightPanel: true, mobileTabs: ['tasks', 'calendar'],
   quickActions: ['task', 'note', 'event', 'expense'], onboarded: false, interests: [],
-  notify: { tasks: true, events: true, habits: true, renewals: true, dates: true, browser: false, asked: false, eventLead: 15, leadDays: 3 },
+  notify: { tasks: true, events: true, habits: true, renewals: true, dates: true, people: true, browser: false, asked: false, eventLead: 15, leadDays: 3 },
   quiet: { enabled: false, from: '22:00', to: '07:00' }, views: {}, workHours: { from: '09:00', to: '18:00' }, waterTarget: 2000,
   focus: { work: 25, short: 5, long: 15, every: 4, goal: 120, auto: false }, rates: {},
 };

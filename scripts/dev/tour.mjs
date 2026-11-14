@@ -6,7 +6,7 @@ import { sampleBackup } from '../../tests/e2e/sample-data.mjs';
 
 const [, , out = '/tmp/tour', mode = 'desktop', ...only] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
-const routes = only.length ? only : ['/app', '/app/tasks', '/app/tasks/board', '/app/tasks/timeline', '/app/calendar', '/app/projects', '/app/projects/p-web', '/app/notes/n-1', '/app/notes/graph', '/app/habits', '/app/goals', '/app/goals/okrs', '/app/finance', '/app/finance/budgets', '/app/learning', '/app/health', '/app/journal', '/app/focus', '/app/shopping', '/app/travel/trip-1', '/app/files/expiring', '/app/entertainment', '/app/digital', '/app/admin', '/app/utilities', '/app/automation', '/app/insights', '/app/marketplace', '/app/settings/appearance', '/app/settings/data', '/app/spatial'];
+const routes = only.length ? only : ['/app', '/app/people', '/app/people/pe-asha', '/app/tasks', '/app/tasks/board', '/app/tasks/timeline', '/app/calendar', '/app/projects', '/app/projects/p-web', '/app/notes/n-1', '/app/notes/graph', '/app/habits', '/app/goals', '/app/goals/okrs', '/app/finance', '/app/finance/budgets', '/app/learning', '/app/health', '/app/journal', '/app/focus', '/app/shopping', '/app/travel/trip-1', '/app/files/expiring', '/app/entertainment', '/app/digital', '/app/admin', '/app/utilities', '/app/automation', '/app/insights', '/app/marketplace', '/app/settings/appearance', '/app/settings/data', '/app/spatial'];
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const contexts = {
@@ -24,7 +24,7 @@ await page.goto(base + '/app');
 await page.evaluate(() => localStorage.setItem('lifeos.identity', JSON.stringify({ mode: 'local' })));
 await page.goto(base + '/app');
 await page.getByRole('heading', { name: 'What do you want LIFEOS to help with?' }).waitFor();
-for (const interest of ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth']) await page.locator('section').getByRole('button', { name: interest, exact: true }).click();
+for (const interest of ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Relationships', 'Creativity', 'Self-growth']) await page.locator('section').getByRole('button', { name: interest, exact: true }).click();
 await page.getByRole('button', { name: 'Continue' }).click();
 await page.getByRole('button', { name: 'Continue' }).click();
 if (process.env.THEME) await page.getByRole('button', { name: process.env.THEME, exact: true }).click();

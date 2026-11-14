@@ -113,9 +113,13 @@ export function nextAnnual(value: unknown, now: Date = new Date()): Date | null 
   const d = parseDate(value);
   if (!d) return null;
   const today = startOfDay(now);
-  let next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
-  if (next < today) next = new Date(today.getFullYear() + 1, d.getMonth(), d.getDate());
-  return next;
+  // 29 February falls on 28 February in years without one (not on 1 March).
+  const on = (year: number) => {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return d.getMonth() === 1 && d.getDate() === 29 && !leap ? new Date(year, 1, 28) : new Date(year, d.getMonth(), d.getDate());
+  };
+  const next = on(today.getFullYear());
+  return next < today ? on(today.getFullYear() + 1) : next;
 }
 
 export const greeting = (now: Date = new Date()): string => {

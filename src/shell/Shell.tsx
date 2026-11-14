@@ -517,7 +517,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
           <section className="fade-up">
             <h1 className="text-2xl font-semibold">What do you want LIFEOS to help with?</h1>
             <p className="mt-1 text-muted">Pick as many as you like. We will switch on only the modules that fit.</p>
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {INTERESTS.map((i) => (
                 <button key={i} type="button" aria-pressed={interests.includes(i)} onClick={() => { setChosen(null); setInterests(interests.includes(i) ? interests.filter((x) => x !== i) : [...interests, i]); }} className={cx('glass !rounded-[20px] px-3 py-4 text-left font-medium', interests.includes(i) && '!border-accent !bg-accent-soft shadow-[0_0_0_1px_var(--accent),0_10px_30px_-12px_var(--accent)]')}>
                   {i}

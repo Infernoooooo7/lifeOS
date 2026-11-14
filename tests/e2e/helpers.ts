@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { sampleBackup } from './sample-data.mjs';
 
-export const INTERESTS = ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth'];
+export const INTERESTS = ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Relationships', 'Creativity', 'Self-growth'];
 
 /** Walk through onboarding, choosing the given interests. */
 export async function onboard(page: Page, interests: string[] = INTERESTS) {
