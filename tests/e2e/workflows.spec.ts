@@ -354,3 +354,40 @@ test.describe('imports from other apps', () => {
     await expect(page.locator('#main-scroll').getByText('Packing list').first()).toBeVisible();
   });
 });
+
+test.describe('repeating events', () => {
+  test('one occurrence of a series can be skipped from the calendar, and restored', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/calendar');
+    await page.getByRole('radio', { name: 'Agenda' }).click();
+    const standups = page.locator('#main-scroll').getByRole('button', { name: /Standup/ });
+    await standups.nth(1).click();
+    const editor = page.getByRole('dialog', { name: 'Edit event' });
+    await expect(editor.getByText('Changes here apply to the whole series.')).toBeVisible();
+    const when = (await editor.locator('b').first().textContent())!.trim();
+    await editor.getByRole('button', { name: 'Skip this one' }).click();
+    await expect(page.getByText(/^Skipped /)).toBeVisible();
+    // The series now lists the skipped date; restoring it from the editor brings the occurrence back.
+    await standups.first().click();
+    const chip = page.getByRole('dialog', { name: 'Edit event' }).getByRole('button', { name: /^Restore / });
+    await expect(chip).toHaveCount(1);
+    expect(when).toContain((await chip.textContent())!.trim().split(' ')[0]);
+    await chip.click();
+    await page.getByRole('dialog', { name: 'Edit event' }).getByRole('button', { name: 'Save' }).click();
+    await standups.first().click();
+    await expect(page.getByRole('dialog', { name: 'Edit event' }).getByRole('button', { name: /^Restore / })).toHaveCount(0);
+  });
+
+  test('a monthly event can repeat on the same weekday position', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/calendar');
+    await page.locator('main').getByRole('button', { name: 'Event', exact: true }).click();
+    const editor = page.getByRole('dialog', { name: 'New event' });
+    await editor.getByLabel('Title').fill('Book club');
+    await editor.getByLabel('Starts').fill('2026-11-14T19:00');
+    await editor.getByLabel('Repeat', { exact: true }).selectOption('monthly');
+    await editor.getByLabel('Repeats on').selectOption({ label: 'On the second Saturday' });
+    await expect(editor.getByText('Every month on the second Saturday')).toBeVisible();
+  });
+});

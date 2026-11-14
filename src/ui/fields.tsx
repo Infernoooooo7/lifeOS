@@ -7,7 +7,7 @@ import { useById, useOptions, useRecords } from '@/core/data/hooks';
 import { titleOf, uid } from '@/core/data/store';
 import { fmtDate, fmtDateTime, fromLocalInput, isDateOnly, parseDate, relativeDay, toLocalInput, ymd } from '@/core/lib/dates';
 import { fmtMoney } from '@/core/lib/money';
-import { describeRecurrence, type Recurrence } from '@/core/lib/recurrence';
+import { describePosition, describeRecurrence, weekdayPosition, type Recurrence } from '@/core/lib/recurrence';
 import { Icon } from './icons';
 import { IconButton, Switch, cx } from './kit';
 import { promptDialog, toast } from './overlays';
@@ -177,14 +177,18 @@ function WeekdaysInput({ value, onChange }: { value: unknown; onChange: Change }
   );
 }
 
-export function RecurrenceInput({ value, onChange }: { value: unknown; onChange: Change }) {
+export function RecurrenceInput({ value, onChange, rec }: { value: unknown; onChange: Change; rec?: Record<string, unknown> }) {
   const rule = (value as Recurrence | null) ?? null;
   const set = (patch: Partial<Recurrence>) => onChange({ ...(rule ?? { freq: 'weekly' }), ...patch });
   const ends = rule?.count ? 'count' : rule?.until ? 'until' : 'never';
+  // Monthly rules can follow the date ("on day 14") or the weekday ("on the 2nd Saturday" / "the last Saturday").
+  const start = parseDate(rec?.startAt ?? rec?.dueAt);
+  const where = start ? weekdayPosition(start) : null;
+  const monthly = rule?.freq === 'monthly' && where ? (rule.setPos === -1 ? 'last' : rule.setPos ? 'nth' : 'day') : null;
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <select className="input !w-auto" aria-label="Repeat" value={rule?.freq ?? ''} onChange={(e) => (e.target.value ? onChange({ ...(rule ?? {}), freq: e.target.value }) : onChange(null))}>
+        <select className="input !w-auto" aria-label="Repeat" value={rule?.freq ?? ''} onChange={(e) => (e.target.value ? onChange({ ...(rule ?? {}), freq: e.target.value, setPos: null, byDay: e.target.value === rule?.freq ? rule?.byDay : undefined }) : onChange(null))}>
           <option value="">Does not repeat</option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
@@ -200,6 +204,23 @@ export function RecurrenceInput({ value, onChange }: { value: unknown; onChange:
         )}
       </div>
       {rule?.freq === 'weekly' && <WeekdaysInput value={rule.byDay ?? []} onChange={(v) => set({ byDay: v as number[] })} />}
+      {monthly && where && start && (
+        <select className="input !w-auto" aria-label="Repeats on" value={monthly} onChange={(e) => set(e.target.value === 'day' ? { setPos: null, byDay: undefined } : { byDay: [where.weekday], setPos: e.target.value === 'last' ? -1 : where.pos })}>
+          <option value="day">On day {start.getDate()}</option>
+          {where.pos <= 4 && <option value="nth">On {describePosition(where.pos, where.weekday)}</option>}
+          {where.last && <option value="last">On {describePosition(-1, where.weekday)}</option>}
+        </select>
+      )}
+      {rule?.exdates && rule.exdates.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          Skipped:
+          {rule.exdates.map((d) => (
+            <button key={d} type="button" className="chip hover:border-accent" aria-label={`Restore ${fmtDate(d)}`} title="Restore this occurrence" onClick={() => set({ exdates: rule.exdates!.filter((x) => x !== d) })}>
+              {fmtDate(d)}<Icon name="x" size={11} />
+            </button>
+          ))}
+        </div>
+      )}
       {rule && (
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
           <select className="input !w-auto" aria-label="Ends" value={ends} onChange={(e) => set(e.target.value === 'never' ? { until: null, count: null } : e.target.value === 'count' ? { count: 10, until: null } : { until: ymd(new Date(Date.now() + 90 * 86_400_000)), count: null })}>
@@ -374,7 +395,7 @@ export function FieldInput({ def, value, onChange, rec, autoFocus }: { def: Fiel
       );
     }
     case 'recurrence':
-      return <RecurrenceInput value={value} onChange={onChange} />;
+      return <RecurrenceInput value={value} onChange={onChange} rec={rec} />;
     case 'weekdays':
       return <WeekdaysInput value={value} onChange={onChange} />;
     case 'sets':
@@ -468,5 +489,6 @@ export const FormField = memo(
     a.autoFocus === b.autoFocus &&
     a.rec?.id === b.rec?.id &&
     a.rec?.allDay === b.rec?.allDay &&
+    (a.def.t !== 'recurrence' || (a.rec?.startAt === b.rec?.startAt && a.rec?.dueAt === b.rec?.dueAt)) &&
     (!a.def.optsKeyWhen || a.rec?.[a.def.optsKeyWhen.k] === b.rec?.[a.def.optsKeyWhen.k]),
 );

@@ -41,6 +41,11 @@ export function toIcs(events: IcsEvent[], calendarName = 'LIFEOS'): string {
     if (e.description) lines.push(`DESCRIPTION:${esc(e.description)}`);
     if (e.location) lines.push(`LOCATION:${esc(e.location)}`);
     if (e.recurrence) lines.push(`RRULE:${toRRule(e.recurrence)}`);
+    if (e.recurrence?.exdates?.length) {
+      // Skipped occurrences, in the same form as DTSTART (a date, or that date at the event's time).
+      const ex = e.recurrence.exdates.map((x) => { const [y, m, d] = x.split('-').map(Number); return e.allDay ? day(new Date(y, m - 1, d)) : utc(new Date(y, m - 1, d, start.getHours(), start.getMinutes(), start.getSeconds())); });
+      lines.push(e.allDay ? `EXDATE;VALUE=DATE:${ex.join(',')}` : `EXDATE:${ex.join(',')}`);
+    }
     lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');
@@ -63,7 +68,7 @@ function parseStamp(value: string, params: string): { iso: string; allDay: boole
 export function parseIcs(text: string): IcsEvent[] {
   const unfolded = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n[ \t]/g, '');
   const events: IcsEvent[] = [];
-  let cur: (Partial<IcsEvent> & { _end?: string }) | null = null;
+  let cur: (Partial<IcsEvent> & { _end?: string; _ex?: string[] }) | null = null;
   for (const line of unfolded.split('\n')) {
     if (line === 'BEGIN:VEVENT') cur = {};
     else if (line === 'END:VEVENT') {
@@ -75,7 +80,8 @@ export function parseIcs(text: string): IcsEvent[] {
           endAt = new Date(e.getFullYear(), e.getMonth(), e.getDate() - 1).toISOString();
           if (new Date(endAt) < new Date(cur.startAt)) endAt = cur.startAt;
         }
-        events.push({ uid: cur.uid, title: cur.title || 'Untitled', description: cur.description, location: cur.location, startAt: cur.startAt, endAt, allDay: !!cur.allDay, recurrence: cur.recurrence ?? null });
+        const recurrence = cur.recurrence ? { ...cur.recurrence, ...(cur._ex?.length ? { exdates: [...new Set(cur._ex)].sort() } : {}) } : null;
+        events.push({ uid: cur.uid, title: cur.title || 'Untitled', description: cur.description, location: cur.location, startAt: cur.startAt, endAt, allDay: !!cur.allDay, recurrence });
       }
       cur = null;
     } else if (cur) {
@@ -104,6 +110,12 @@ export function parseIcs(text: string): IcsEvent[] {
           break;
         }
         case 'RRULE': cur.recurrence = fromRRule(value); break;
+        case 'EXDATE':
+          for (const v of value.split(',')) {
+            const p = parseStamp(v, params);
+            if (p) { const d = new Date(p.iso); (cur._ex ??= []).push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`); }
+          }
+          break;
       }
     }
   }

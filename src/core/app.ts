@@ -10,6 +10,8 @@ export interface EditorRequest {
   collection: string;
   id?: string;
   defaults?: Fields;
+  /** for a repeating record opened from one of its occurrences: that occurrence's start (ISO) */
+  occurrence?: string;
 }
 
 interface AppState {
@@ -66,7 +68,7 @@ export const useSegments = (): string[] => {
   return path.split('/').filter(Boolean).map(decodeURIComponent);
 };
 
-export const openEditor = (collection: string, id?: string, defaults?: Fields) => useApp.setState({ editor: { collection, id, defaults } });
+export const openEditor = (collection: string, id?: string, defaults?: Fields, occurrence?: string) => useApp.setState({ editor: { collection, id, defaults, occurrence } });
 export const closeEditor = () => useApp.setState({ editor: null });
 export const openCapture = (kind?: string) => useApp.setState({ capture: { open: true, kind }, palette: false, launcher: false });
 

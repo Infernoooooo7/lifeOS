@@ -108,18 +108,19 @@ export const fromLocalInput = (value: string): string | null => {
   return d && !Number.isNaN(d.getTime()) ? d.toISOString() : null;
 };
 
+/** The same month and day in another year; 29 February falls on 28 February in years without one (not 1 March). */
+export function inYear(d: Date, year: number): Date {
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return d.getMonth() === 1 && d.getDate() === 29 && !leap ? new Date(year, 1, 28) : new Date(year, d.getMonth(), d.getDate());
+}
+
 /** Next occurrence (today or later) of a yearly date such as a birthday. */
 export function nextAnnual(value: unknown, now: Date = new Date()): Date | null {
   const d = parseDate(value);
   if (!d) return null;
   const today = startOfDay(now);
-  // 29 February falls on 28 February in years without one (not on 1 March).
-  const on = (year: number) => {
-    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-    return d.getMonth() === 1 && d.getDate() === 29 && !leap ? new Date(year, 1, 28) : new Date(year, d.getMonth(), d.getDate());
-  };
-  const next = on(today.getFullYear());
-  return next < today ? on(today.getFullYear() + 1) : next;
+  const next = inYear(d, today.getFullYear());
+  return next < today ? inYear(d, today.getFullYear() + 1) : next;
 }
 
 export const greeting = (now: Date = new Date()): string => {

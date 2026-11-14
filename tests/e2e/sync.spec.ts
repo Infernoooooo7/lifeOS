@@ -65,7 +65,7 @@ test.describe('accounts', () => {
     const phone = await secondDevice(browser, email, true);
     await expect(phone.getByRole('heading', { name: /Good/ })).toBeVisible();
     await page.goto('/app/settings/account');
-    await expect(page.getByText('This device')).toBeVisible();
+    await expect(page.getByText('This device', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Sign out', exact: true }).first().click();
     await expect(page.getByText('Device signed out')).toBeVisible();
     // the other device notices on its next sync and keeps its local data

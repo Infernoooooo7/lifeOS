@@ -6,7 +6,8 @@ import { collection as collectionDef, titleField, type FieldDef } from '@/core/c
 import type { Rec } from '@/core/data/db';
 import { useFields, usePrefs, useRecord, useRecords } from '@/core/data/hooks';
 import { create, getRec, remove, restore, titleOf, update, upsert } from '@/core/data/store';
-import { timeAgo, ymd } from '@/core/lib/dates';
+import { fmtDate, timeAgo, ymd } from '@/core/lib/dates';
+import type { Recurrence } from '@/core/lib/recurrence';
 import { isDone, nextRecurringInstance, wouldCycle, type TaskLike } from '@/core/lib/tasks';
 import type { Fields } from '@/core/sync/merge';
 import { FormField } from './fields';
@@ -174,7 +175,21 @@ export function RecordEditor() {
     });
   })();
 
+  // Opened from one occurrence of a repeating record: offer to skip just that one.
+  const occurrence = !isNew && existing?.recurrence && request.occurrence ? new Date(request.occurrence) : null;
+  const skipOccurrence = async () => {
+    if (!existing || !occurrence) return;
+    const rule = existing.recurrence as Recurrence;
+    const day = ymd(occurrence);
+    await update(existing.id, { recurrence: { ...rule, exdates: [...new Set([...(rule.exdates ?? []), day])].sort() } });
+    closeEditor();
+    toast(`Skipped ${fmtDate(occurrence, { weekday: true })}`, {
+      action: { label: 'Undo', run: () => void update(existing.id, { recurrence: { ...rule, exdates: (rule.exdates ?? []).filter((d) => d !== day) } }) },
+    });
+  };
+
   const menu: MenuItem[] = [];
+  if (occurrence) menu.push({ label: `Skip ${fmtDate(occurrence)} only`, icon: 'x', onClick: () => void skipOccurrence() });
   if (!isNew && existing) {
     menu.push({
       label: 'Duplicate', icon: 'copy',
@@ -223,6 +238,13 @@ export function RecordEditor() {
         }}
       >
         {def.hint && <p className="col-span-full rounded-xl bg-accent-soft px-3 py-2 text-sm text-muted">{def.hint}</p>}
+        {occurrence && (
+          <div className="col-span-full flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
+            <Icon name="repeat" size={15} className="flex-none text-accent" />
+            <span className="min-w-0 flex-1 basis-52 text-muted">Changes here apply to the whole series. You opened the occurrence on <b className="text-text">{fmtDate(occurrence, { weekday: true })}</b>.</span>
+            <Button size="sm" icon="x" onClick={() => void skipOccurrence()}>Skip this one</Button>
+          </div>
+        )}
         {clashes.length > 0 && (
           <p role="status" className="col-span-full flex items-start gap-2 rounded-xl border border-warn/30 bg-warn/10 px-3 py-2 text-sm">
             <Icon name="warning" size={16} className="mt-0.5 flex-none text-warn" />

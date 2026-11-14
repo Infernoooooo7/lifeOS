@@ -8,7 +8,7 @@ These are the honest edges of the current release. Each is also labelled in the 
 | --- | --- |
 | Reminders and automation | Run only while LIFEOS is open on at least one device. Missed schedules run once when the app is next opened. There are no push notifications while the app is closed. |
 | Attachments | Files attached to records stay in the browser where they were added. They are not uploaded, synced or included in JSON backups. |
-| Calendar | No two-way sync with Google or Outlook. `.ics` import and export work. Recurring events support daily / weekly (by weekday) / monthly / yearly rules; exceptions to a series and "nth weekday of the month" are not supported. |
+| Calendar | No two-way sync with Google or Outlook. `.ics` import and export work (including skipped occurrences). Repeat rules cover daily, weekly by weekday, monthly by date or by weekday position ("2nd Tuesday", "last Friday"), and yearly; one occurrence can be skipped, but not moved or edited on its own. |
 | Currencies | Exchange rates are reference values the user maintains, not a live feed. |
 | Vision board | Cards use text, emoji and colour; no photos. |
 | Journal privacy | Private entries are hidden in the interface but not separately encrypted. |
@@ -38,7 +38,7 @@ The registry is designed for 500+ capabilities; these are the next steps in roug
 5. **Hybrid logical clocks** for conflict ordering independent of device clocks.
 
 **Then**
-- Recurrence exceptions and "nth weekday" rules; drag-to-reschedule in week view.
+- Editing or moving a single occurrence of a series; drag-to-reschedule in week view.
 - Real-time sync channel (server-sent events) on top of the existing cursor protocol.
 - Full-text index in a web worker (search already tolerates typos); saved searches and filters.
 - Photo cards for the vision board; image attachments for notes and inventory.

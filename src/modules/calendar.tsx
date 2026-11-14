@@ -6,7 +6,7 @@ import type { Rec } from '@/core/data/db';
 import { useEnabledModules, useNow, usePrefs, useRecords } from '@/core/data/hooks';
 import { create, createMany, titleOf } from '@/core/data/store';
 import { downloadFile } from '@/core/lib/backup';
-import { addDays, addMonths, endOfDay, endOfMonth, fmtDuration, fmtTime, parseDate, sameDay, startOfDay, startOfMonth, startOfWeek, ymd } from '@/core/lib/dates';
+import { addDays, addMonths, endOfDay, inYear, endOfMonth, fmtDuration, fmtTime, parseDate, sameDay, startOfDay, startOfMonth, startOfWeek, ymd } from '@/core/lib/dates';
 import { parseIcs, toIcs, type IcsEvent } from '@/core/lib/ics';
 import { occurrences, type Recurrence } from '@/core/lib/recurrence';
 import { Page, type ModuleProps } from '@/shell/Page';
@@ -88,7 +88,7 @@ function useOccurrences(from: Date, to: Date, hidden: Set<string>, layers: { tas
           const base = parseDate(d.date);
           if (!base) continue;
           for (let y = from.getFullYear(); y <= to.getFullYear(); y++) {
-            const at = d.repeatYearly === false ? base : new Date(y, base.getMonth(), base.getDate());
+            const at = d.repeatYearly === false ? base : inYear(base, y);
             if (at >= from && at <= to) out.push({ key: `dates:${d.id}:${y}`, rec: d, collection: 'dates', title: `${d.kind === 'birthday' ? '🎂 ' : ''}${titleOf(d)}`, start: at, end: at, allDay: true, color: '#f472b6' });
             if (d.repeatYearly === false) break;
           }
@@ -135,7 +135,7 @@ function TimeGrid({ days, occs, onSlot }: { days: Date[]; occs: Occ[]; onSlot: (
                 <div className={cx('text-center text-xs', sameDay(d, now) ? 'font-semibold text-accent' : 'text-muted')}>{d.toLocaleDateString(undefined, { weekday: 'short' })} <span className="num">{d.getDate()}</span></div>
                 <div className="mt-1 space-y-0.5">
                   {allDay.filter((o) => sameDay(o.start, d) || (o.start <= d && o.end >= d)).slice(0, 4).map((o) => (
-                    <button key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id)} className={cx('block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[0.72rem]', o.done && 'line-through opacity-60')} style={{ background: `color-mix(in oklab, ${o.color} 22%, transparent)` }}>{o.title}</button>
+                    <button key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id, undefined, o.rec.recurrence ? o.start.toISOString() : undefined)} className={cx('block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[0.72rem]', o.done && 'line-through opacity-60')} style={{ background: `color-mix(in oklab, ${o.color} 22%, transparent)` }}>{o.title}</button>
                   ))}
                 </div>
               </div>
@@ -166,7 +166,7 @@ function TimeGrid({ days, occs, onSlot }: { days: Date[]; occs: Occ[]; onSlot: (
                       const height = Math.max(20, ((Math.min(o.end.getTime(), endOfDay(d).getTime()) - o.start.getTime()) / 3_600_000) * HOUR - 2);
                       return (
                         <button
-                          key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id)} title={o.title}
+                          key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id, undefined, o.rec.recurrence ? o.start.toISOString() : undefined)} title={o.title}
                           className={cx('absolute z-[2] overflow-hidden rounded-lg border-l-[3px] px-1.5 py-0.5 text-left text-[0.74rem] leading-tight', o.done && 'opacity-55')}
                           style={{ top, height, left: `calc(${(ci / cols.length) * 100}% + 2px)`, width: `calc(${100 / cols.length}% - 4px)`, background: `color-mix(in oklab, ${o.color} 24%, var(--solid))`, borderColor: o.color }}
                         >
@@ -203,7 +203,7 @@ function Agenda({ occs }: { occs: Occ[] }) {
           </div>
           <div className="min-w-0 flex-1 space-y-1.5">
             {list.map((o) => (
-              <button key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id)} className="card card-hover flex w-full items-center gap-3 !py-2.5 text-left">
+              <button key={o.key} type="button" onClick={() => openEditor(o.collection, o.rec.id, undefined, o.rec.recurrence ? o.start.toISOString() : undefined)} className="card card-hover flex w-full items-center gap-3 !py-2.5 text-left">
                 <span className="h-9 w-1 flex-none rounded-full" style={{ background: o.color }} />
                 <span className="min-w-0 flex-1">
                   <span className={cx('block truncate font-medium', o.done && 'text-faint line-through')}>{o.title}</span>
@@ -302,7 +302,7 @@ export default function Calendar(_: ModuleProps) {
     : view === 'week' ? `${from.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${to.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`
     : view === 'day' ? cursor.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Next 30 days';
   const newAt = (at: Date) => openEditor('events', undefined, { startAt: at.toISOString(), endAt: new Date(at.getTime() + 3_600_000).toISOString() });
-  const items: CalItem[] = occs.map((o) => ({ id: o.key, date: o.start, title: o.title, color: o.color, done: o.done, time: o.allDay ? undefined : fmtTime(o.start), onClick: () => openEditor(o.collection, o.rec.id) }));
+  const items: CalItem[] = occs.map((o) => ({ id: o.key, date: o.start, title: o.title, color: o.color, done: o.done, time: o.allDay ? undefined : fmtTime(o.start), onClick: () => openEditor(o.collection, o.rec.id, undefined, o.rec.recurrence ? o.start.toISOString() : undefined) }));
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(cursor, prefs.weekStart), i));
   const openTasks = tasks.filter((t) => t.status !== 'done' && !t.archived && !t.parentId).slice(0, 30);
 
