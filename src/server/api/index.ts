@@ -71,6 +71,9 @@ const routes: Record<string, Handler> = {
   'POST auth/reset/request': auth.requestReset,
   'POST auth/reset/confirm': auth.confirmReset,
   'POST auth/delete-account': auth.deleteAccount,
+  'POST auth/2fa/setup': auth.twoStepSetup,
+  'POST auth/2fa/enable': auth.twoStepEnable,
+  'POST auth/2fa/disable': auth.twoStepDisable,
   'POST sync': syncRoute,
   'GET export': exportRoute,
 };

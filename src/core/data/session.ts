@@ -9,6 +9,8 @@ export interface AccountUser {
   currency: string;
   avatarColor: string;
   createdAt: string;
+  /** two-step verification (authenticator app) is on */
+  twoStep?: boolean;
 }
 
 export type Identity = { mode: 'local' } | { mode: 'account'; userId: string; email: string; displayName: string };

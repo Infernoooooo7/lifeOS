@@ -448,6 +448,7 @@ export const MODULES: ModuleDef[] = [
   {
     id: 'settings', name: 'Settings', tagline: 'Make it yours', icon: 'settings', hue: 215, category: 'System', core: true,
     features: feats('platform', [
+      ['two-step', 'Two-step verification', 'Authenticator-app codes (RFC 6238) on sign-in, set up with a QR code; codes cannot be reused; the recovery code is the way back in.'],
       ['example-week', 'Example week', 'Explore with realistic sample data from onboarding or Settings, marked so it can be removed in one step without touching your own records.'],
       ['import-todoist', 'Import from Todoist', 'Todoist CSV exports become projects with sections, labels, sub-tasks, priorities, dates and comments.', 'implemented', undefined, ['tasks']],
       ['import-keep', 'Import from Google Keep', 'Takeout notes and checklists with labels, pins and archive state; the trash is skipped.', 'implemented', undefined, ['notes']],

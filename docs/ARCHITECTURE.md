@@ -142,6 +142,10 @@ reference rows of the same user — cross-user access is impossible at the schem
 
 - Passwords: scrypt (N=2^15, r=8, p=3) with per-password salt. Sessions: random 256-bit token, stored only as a
   SHA-256 hash, in an httpOnly, SameSite=Lax, Secure cookie; rolling 30-day expiry; listed and revocable per device.
+- Two-step verification (optional): time-based codes from an authenticator app (RFC 6238, SHA-1, 30 s, ±1 step),
+  set up by QR code and confirmed with a valid code; each accepted step is stored so a code cannot be replayed, and
+  concurrent sign-ins with one code cannot both succeed. A recovery-code reset turns it off (the way back in after a
+  lost phone). The secret is stored in the database, protected like the rest of the account data.
 - Password reset: single-use recovery code issued at sign-up (works without e-mail); e-mailed link when
   `RESEND_API_KEY` is configured. Reset and login responses do not reveal whether an e-mail is registered.
 - Every API handler validates input with zod, checks the session, and scopes queries by `userId`.

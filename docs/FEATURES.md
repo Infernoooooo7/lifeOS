@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**316 capabilities in 25 modules** — 303 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**317 capabilities in 25 modules** — 304 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -39,7 +39,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 38 | 0 | 1 | 2 |
+| Settings | System | 39 | 0 | 1 | 2 |
 
 ## Home
 
@@ -490,6 +490,7 @@ _Make it yours._ Module id `settings` · always on
 
 | | Capability | Description | Id |
 | --- | --- | --- | --- |
+| ✅ | Two-step verification | Authenticator-app codes (RFC 6238) on sign-in, set up with a QR code; codes cannot be reused; the recovery code is the way back in. | `platform.two-step` |
 | ✅ | Example week | Explore with realistic sample data from onboarding or Settings, marked so it can be removed in one step without touching your own records. | `platform.example-week` |
 | ✅ | Import from Todoist | Todoist CSV exports become projects with sections, labels, sub-tasks, priorities, dates and comments. | `platform.import-todoist` |
 | ✅ | Import from Google Keep | Takeout notes and checklists with labels, pins and archive state; the trash is skipped. | `platform.import-keep` |

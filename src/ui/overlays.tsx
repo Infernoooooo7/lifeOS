@@ -24,6 +24,8 @@ interface DialogRequest {
   initial?: string;
   placeholder?: string;
   multiline?: boolean;
+  /** a password: masked input, offered to password managers */
+  secret?: boolean;
   resolve: (value: boolean | string | null) => void;
 }
 
@@ -41,7 +43,7 @@ export function confirmDialog(opts: { title: string; body?: string; confirmLabel
   return new Promise((resolve) => useOverlays.setState({ dialog: { kind: 'confirm', ...opts, resolve: (v) => resolve(v === true) } }));
 }
 
-export function promptDialog(opts: { title: string; body?: string; initial?: string; placeholder?: string; confirmLabel?: string; multiline?: boolean }): Promise<string | null> {
+export function promptDialog(opts: { title: string; body?: string; initial?: string; placeholder?: string; confirmLabel?: string; multiline?: boolean; secret?: boolean; danger?: boolean }): Promise<string | null> {
   return new Promise((resolve) => useOverlays.setState({ dialog: { kind: 'prompt', ...opts, resolve: (v) => resolve(typeof v === 'string' ? v : null) } }));
 }
 
@@ -74,7 +76,10 @@ function DialogHost() {
         (dialog.multiline ? (
           <textarea ref={input} className="input mt-3 min-h-28" value={value} placeholder={dialog.placeholder} onChange={(e) => setValue(e.target.value)} />
         ) : (
-          <input ref={input} className="input mt-3" value={value} placeholder={dialog.placeholder} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+          <input
+            ref={input} className="input mt-3" value={value} placeholder={dialog.placeholder} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()}
+            {...(dialog.secret ? { type: 'password', autoComplete: 'current-password', 'aria-label': 'Password' } : { 'aria-label': dialog.title })}
+          />
         ))}
     </Sheet>
   );

@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { totpAt } from '../../src/server/totp';
 import { PASSWORD, onboard, randomIp, register, signIn, syncNow, uniqueEmail, waitForSync } from './helpers';
 
 test.beforeEach(async ({ context }) => {
@@ -199,5 +200,38 @@ test.describe('cross-device synchronisation', () => {
     expect((await anonymous.request.post('/api/sync', { data: { cursor: 0, changes: [] } })).status()).toBe(401);
     await strangerContext.close();
     await anonymous.close();
+  });
+});
+
+test.describe('two-step verification', () => {
+  test('turn it on with a QR key, then signing in asks for a code', async ({ page, browser }) => {
+    const email = uniqueEmail();
+    await register(page, email);
+    await page.goto('/app/settings/account');
+    await page.getByRole('button', { name: 'Turn on' }).click();
+    await page.getByRole('dialog').getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('img', { name: 'QR code for your authenticator app' })).toBeVisible();
+    const secret = (await page.locator('span.select-all').first().innerText()).replace(/\s/g, '');
+    await page.getByLabel('Authentication code').fill(totpAt(secret, Date.now()));
+    await page.getByRole('button', { name: 'Turn on' }).last().click();
+    await expect(page.getByText('Two-step verification is on.')).toBeVisible();
+    await expect(page.getByText('Protected')).toBeVisible();
+
+    // A new device: password first, then the code.
+    const other = await browser.newContext({ extraHTTPHeaders: { 'x-real-ip': randomIp() } });
+    const phone = await other.newPage();
+    await phone.goto('/app');
+    await phone.getByLabel('E-mail').fill(email);
+    await phone.getByLabel('Password').fill(PASSWORD);
+    await phone.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(phone.getByText(/uses two-step verification/)).toBeVisible();
+    await phone.getByLabel('Authentication code').fill('000000');
+    await phone.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(phone.getByRole('alert').filter({ hasText: 'That code is not right' })).toBeVisible();
+    await phone.getByLabel('Authentication code').fill(totpAt(secret, Date.now() + 30_000));
+    await phone.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(phone.getByRole('heading', { name: /Good (morning|afternoon|evening|night)/ })).toBeVisible();
+    await other.close();
   });
 });

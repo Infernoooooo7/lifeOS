@@ -65,6 +65,8 @@ export function AuthScreen({ initialMode = 'signin', onDone }: { initialMode?: M
   const [localCount, setLocalCount] = useState(0);
   const [bring, setBring] = useState(true);
   const [emailReset, setEmailReset] = useState(false);
+  /** set once the server says this account uses two-step verification */
+  const [otp, setOtp] = useState<string | null>(null);
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('token');
@@ -90,7 +92,7 @@ export function AuthScreen({ initialMode = 'signin', onDone }: { initialMode?: M
     setInfo(null);
     try {
       if (mode === 'signin') {
-        const res = await api<{ user: AccountUser }>('auth/login', { body: { email, password } });
+        const res = await api<{ user: AccountUser }>('auth/login', { body: { email, password, ...(otp ? { code: otp } : {}) } });
         await finish(res.user);
       } else if (mode === 'register') {
         const res = await api<{ user: AccountUser; recoveryCode: string }>('auth/register', { body: { email, password, name } });
@@ -109,6 +111,11 @@ export function AuthScreen({ initialMode = 'signin', onDone }: { initialMode?: M
         setInfo(res.emailDelivery ? 'If that address has an account, a reset link is on its way.' : 'This deployment has no e-mail delivery. Use your recovery code instead.');
       }
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'totp_required') {
+        setOtp('');
+        setInfo('This account uses two-step verification. Enter the 6-digit code from your authenticator app.');
+        return;
+      }
       setError(e instanceof ApiError ? (e.offline ? 'You are offline. You can still use LIFEOS on this device without an account.' : e.message) : 'Something went wrong.');
     } finally {
       setBusy(false);
@@ -145,7 +152,7 @@ export function AuthScreen({ initialMode = 'signin', onDone }: { initialMode?: M
         ) : (
           <div className="glass p-5">
             <Tabs
-              className="mb-4" value={mode} onChange={(m) => { setMode(m); setError(null); setInfo(null); }}
+              className="mb-4" value={mode} onChange={(m) => { setMode(m); setError(null); setInfo(null); setOtp(null); }}
               tabs={[{ value: 'signin', label: 'Sign in' }, { value: 'register', label: 'Create account' }, { value: 'reset', label: 'Reset' }]}
             />
             <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
@@ -155,6 +162,11 @@ export function AuthScreen({ initialMode = 'signin', onDone }: { initialMode?: M
               {(mode !== 'reset' || token || code) && (
                 <Field label={mode === 'reset' ? 'New password' : 'Password'} hint={mode !== 'signin' ? 'At least 10 characters.' : undefined}>
                   <input className="input" type="password" required minLength={mode === 'signin' ? 1 : 10} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
+                </Field>
+              )}
+              {mode === 'signin' && otp !== null && (
+                <Field label="Authentication code" hint="Lost your phone? Use “Forgot password” with your recovery code; that also turns two-step verification off.">
+                  <input className="input num tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required autoFocus value={otp} onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
                 </Field>
               )}
               {mode !== 'reset' && localCount > 0 && (

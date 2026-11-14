@@ -411,6 +411,72 @@ function SyncSection() {
   );
 }
 
+function TwoStepCard() {
+  const { data: user, refetch } = useAccount();
+  const [setup, setSetup] = useState<{ secret: string; uri: string; svg: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const fail = (e: unknown) => toast(e instanceof ApiError ? e.message : 'Something went wrong', { tone: 'bad' });
+  const start = async () => {
+    const password = await promptDialog({ secret: true, title: 'Confirm your password', body: 'Enter your password to set up two-step verification.', confirmLabel: 'Continue' });
+    if (!password) return;
+    try {
+      const res = await api<{ secret: string; uri: string }>('auth/2fa/setup', { body: { password } });
+      const QR = await import('qrcode');
+      const svg = await QR.toString(res.uri, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0b0d12', light: '#ffffff' } });
+      setSetup({ ...res, svg });
+      setCode('');
+    } catch (e) { fail(e); }
+  };
+  const enable = async () => {
+    setBusy(true);
+    try {
+      await api('auth/2fa/enable', { body: { code } });
+      setSetup(null);
+      await refetch();
+      toast('Two-step verification is on. New sign-ins will ask for a code.', { tone: 'good' });
+    } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  const disable = async () => {
+    const password = await promptDialog({ secret: true, title: 'Turn off two-step verification?', body: 'Signing in will need only your password. Enter your password to confirm.', confirmLabel: 'Turn off', danger: true });
+    if (!password) return;
+    try {
+      await api('auth/2fa/disable', { body: { password } });
+      await refetch();
+      toast('Two-step verification is off.');
+    } catch (e) { fail(e); }
+  };
+  return (
+    <Card title="Two-step verification">
+      {user?.twoStep ? (
+        <Row title="On" hint="Signing in on a new device asks for a 6-digit code from your authenticator app as well as your password.">
+          <span className="chip !border-good/40 !text-good"><Icon name="shield" size={12} />Protected</span>
+          <Button size="sm" variant="ghost" onClick={() => void disable()}>Turn off</Button>
+        </Row>
+      ) : !setup ? (
+        <Row title="Off" hint="Add a second step to signing in: a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…).">
+          <Button size="sm" variant="primary" icon="shield" onClick={() => void start()}>Turn on</Button>
+        </Row>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+          <div className="mx-auto aspect-square w-44 self-start overflow-hidden rounded-xl bg-white p-1.5 sm:mx-0 [&_svg]:block [&_svg]:size-full" role="img" aria-label="QR code for your authenticator app" dangerouslySetInnerHTML={{ __html: setup.svg }} />
+          <div className="min-w-0 space-y-3 text-sm">
+            <p><b>1.</b> Scan the code with your authenticator app{' '}— or on this phone, <a className="text-accent underline" href={setup.uri}>open it in your authenticator app</a>.</p>
+            <p className="text-muted">Can’t scan? Enter this key: <span className="num select-all break-all rounded-md bg-surface-2 px-1.5 py-0.5 text-text">{setup.secret.match(/.{1,4}/g)?.join(' ')}</span></p>
+            <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void enable(); }}>
+              <label className="block"><span className="label"><b>2.</b> Enter the 6-digit code it shows</span>
+                <input className="input num !w-40 tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" aria-label="Authentication code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
+              </label>
+              <div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => setSetup(null)}>Cancel</Button><Button type="submit" variant="primary" disabled={code.length !== 6 || busy}>Turn on</Button></div>
+            </form>
+            <p className="text-xs text-faint">If you lose your phone, your recovery code still lets you reset your password; doing so turns two-step verification off.</p>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function Account() {
   const identity = useApp((s) => s.identity);
   const { data: sessions, refetch: load } = useDeviceSessions();
@@ -442,15 +508,16 @@ function Account() {
           <Button type="submit" variant="primary" className="self-end">Change</Button>
         </form>
       </Card>
+      <TwoStepCard />
       <Card title="Recovery code">
         <p className="text-sm text-muted">The recovery code resets your password without e-mail. Generating a new one invalidates the old one.</p>
         {code ? <div className="mt-2"><div className="num select-all rounded-xl border border-line-strong bg-surface-2 px-3 py-3 text-center text-lg tracking-wider">{code}</div><p className="mt-1 text-xs text-faint">Shown once. Store it in your password manager.</p></div> : (
-          <Button className="mt-2" icon="key" onClick={async () => { const password = await promptDialog({ title: 'Confirm your password', body: 'Enter your password to generate a new recovery code.', confirmLabel: 'Generate' }); if (password) await guard(async () => setCode((await api<{ recoveryCode: string }>('auth/recovery-code', { body: { password } })).recoveryCode)); }}>Generate a new recovery code</Button>
+          <Button className="mt-2" icon="key" onClick={async () => { const password = await promptDialog({ secret: true, title: 'Confirm your password', body: 'Enter your password to generate a new recovery code.', confirmLabel: 'Generate' }); if (password) await guard(async () => setCode((await api<{ recoveryCode: string }>('auth/recovery-code', { body: { password } })).recoveryCode)); }}>Generate a new recovery code</Button>
         )}
       </Card>
       <Card title="Delete account" tone="danger">
         <p className="text-sm text-muted">Deletes your account and every record on the server, then erases the data on this device. Download a backup first if you want to keep anything. This cannot be undone.</p>
-        <Button className="mt-2" variant="danger" icon="trash" onClick={async () => { const password = await promptDialog({ title: 'Delete your account?', body: 'Type your password to permanently delete your account and all of its data.', confirmLabel: 'Delete account' }); if (!password) return; await guard(async () => { await api('auth/delete-account', { body: { password } }); await getDb().delete(); writeIdentity(null); window.location.href = '/app'; }); }}>Delete my account</Button>
+        <Button className="mt-2" variant="danger" icon="trash" onClick={async () => { const password = await promptDialog({ secret: true, title: 'Delete your account?', body: 'Type your password to permanently delete your account and all of its data.', confirmLabel: 'Delete account' }); if (!password) return; await guard(async () => { await api('auth/delete-account', { body: { password } }); await getDb().delete(); writeIdentity(null); window.location.href = '/app'; }); }}>Delete my account</Button>
       </Card>
     </>
   );

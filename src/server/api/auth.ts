@@ -4,15 +4,17 @@ import { hashSecret, normalizeRecoveryCode, randomToken, recoveryCode, sha256, v
 import { db } from '../db';
 import { clientIp, fail, json, readBody, requestOrigin } from '../http';
 import { rateLimit } from '../ratelimit';
+import { newTotpSecret, otpauthUri, verifyTotp } from '../totp';
 
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email('Enter a valid e-mail address'));
 const password = z.string().min(10, 'Password must be at least 10 characters').max(200);
 const deviceName = z.string().max(60).optional();
 
-const publicUser = (u: { id: string; email: string; createdAt: Date }, p?: { displayName: string; timezone: string; locale: string; currency: string; avatarColor: string } | null) => ({
+const publicUser = (u: { id: string; email: string; createdAt: Date; totpEnabledAt?: Date | null }, p?: { displayName: string; timezone: string; locale: string; currency: string; avatarColor: string } | null) => ({
   id: u.id,
   email: u.email,
   createdAt: u.createdAt.toISOString(),
+  twoStep: !!u.totpEnabledAt,
   displayName: p?.displayName ?? '',
   timezone: p?.timezone ?? 'Asia/Kolkata',
   locale: p?.locale ?? 'en-IN',
@@ -37,13 +39,22 @@ export async function register(req: Request): Promise<Response> {
 }
 
 export async function login(req: Request): Promise<Response> {
-  const body = await readBody(req, z.object({ email, password: z.string().max(200), deviceName }));
+  const body = await readBody(req, z.object({ email, password: z.string().max(200), deviceName, code: z.string().max(12).optional() }));
   await rateLimit(`login:${clientIp(req)}:${body.email}`, 10, 900);
   // Per-account ceiling that holds even if an attacker rotates addresses.
   await rateLimit(`login-account:${body.email}`, 50, 3600);
   const user = await db().user.findUnique({ where: { email: body.email }, include: { profile: true } });
   const ok = await verifySecret(body.password, user?.passwordHash);
   if (!user || !ok) fail(401, 'bad_credentials', 'Incorrect e-mail or password.');
+  // Two-step verification: the password alone is not enough. Asked for only after the password is right.
+  if (user.totpEnabledAt && user.totpSecret) {
+    if (!body.code) fail(401, 'totp_required', 'Enter the 6-digit code from your authenticator app.');
+    const step = verifyTotp(user.totpSecret, body.code, Date.now(), user.totpLastStep);
+    if (step === null) fail(401, 'bad_totp', 'That code is not right. Codes change every 30 seconds — check your phone’s clock if this keeps happening.');
+    // Conditional update: two requests racing with the same code cannot both win.
+    const won = await db().user.updateMany({ where: { id: user.id, OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }] }, data: { totpLastStep: step } });
+    if (!won.count) fail(401, 'bad_totp', 'That code was already used. Wait for the next one.');
+  }
   const session = await createSession(user.id, deviceLabel(req.headers.get('user-agent'), body.deviceName));
   return json({ user: publicUser(user, user.profile) }, { headers: { 'set-cookie': session.setCookie } });
 }
@@ -183,7 +194,8 @@ export async function confirmReset(req: Request): Promise<Response> {
   await db().$transaction([
     db().user.update({
       where: { id: userId },
-      data: { passwordHash: await hashSecret(body.password), ...(rotatedCode ? { recoveryHash: await hashSecret(rotatedCode) } : {}) },
+      // The recovery code is the way back in when the authenticator is lost, so using it also turns two-step off.
+      data: { passwordHash: await hashSecret(body.password), ...(rotatedCode ? { recoveryHash: await hashSecret(rotatedCode), totpSecret: null, totpEnabledAt: null, totpLastStep: null } : {}) },
     }),
     db().session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
   ]);
@@ -198,4 +210,44 @@ export async function deleteAccount(req: Request): Promise<Response> {
   if (!(await verifySecret(body.password, user.passwordHash))) fail(403, 'bad_credentials', 'Password is incorrect.');
   await db().user.delete({ where: { id: user.id } }); // cascades to every table
   return json({ ok: true }, { headers: { 'set-cookie': clearCookie() } });
+}
+
+// ── Two-step verification ───────────────────────────────────────────────────────────────────────────
+
+/** Start setup: a fresh secret (not yet active) and the otpauth link to scan. Needs the password. */
+export async function twoStepSetup(req: Request): Promise<Response> {
+  const auth = await requireAuth(req);
+  const body = await readBody(req, z.object({ password: z.string().max(200) }));
+  await rateLimit(`pw:${auth.userId}`, 10, 900);
+  const user = await db().user.findUniqueOrThrow({ where: { id: auth.userId } });
+  if (!(await verifySecret(body.password, user.passwordHash))) fail(403, 'bad_credentials', 'Password is incorrect.');
+  if (user.totpEnabledAt) fail(409, 'already_enabled', 'Two-step verification is already on.');
+  const secret = newTotpSecret();
+  await db().user.update({ where: { id: user.id }, data: { totpSecret: secret, totpEnabledAt: null, totpLastStep: null } });
+  return json({ secret, uri: otpauthUri(secret, user.email) });
+}
+
+/** Finish setup by proving the app works: a valid code switches two-step verification on. */
+export async function twoStepEnable(req: Request): Promise<Response> {
+  const auth = await requireAuth(req);
+  const body = await readBody(req, z.object({ code: z.string().max(12) }));
+  await rateLimit(`totp:${auth.userId}`, 10, 900);
+  const user = await db().user.findUniqueOrThrow({ where: { id: auth.userId } });
+  if (user.totpEnabledAt) fail(409, 'already_enabled', 'Two-step verification is already on.');
+  if (!user.totpSecret) fail(400, 'not_started', 'Start the setup first.');
+  const step = verifyTotp(user.totpSecret, body.code, Date.now(), null);
+  if (step === null) fail(400, 'bad_totp', 'That code is not right. Make sure you scanned the newest QR code, then try the current code.');
+  await db().user.update({ where: { id: user.id }, data: { totpEnabledAt: new Date(), totpLastStep: step } });
+  return json({ ok: true });
+}
+
+/** Turn two-step verification off. Needs the password. */
+export async function twoStepDisable(req: Request): Promise<Response> {
+  const auth = await requireAuth(req);
+  const body = await readBody(req, z.object({ password: z.string().max(200) }));
+  await rateLimit(`pw:${auth.userId}`, 10, 900);
+  const user = await db().user.findUniqueOrThrow({ where: { id: auth.userId } });
+  if (!(await verifySecret(body.password, user.passwordHash))) fail(403, 'bad_credentials', 'Password is incorrect.');
+  await db().user.update({ where: { id: user.id }, data: { totpSecret: null, totpEnabledAt: null, totpLastStep: null } });
+  return json({ ok: true });
 }
