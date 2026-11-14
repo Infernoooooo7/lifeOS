@@ -14,8 +14,9 @@ import { Bars, Donut, Lines } from '@/ui/charts';
 import { Icon, type IconName } from '@/ui/icons';
 import { Empty, Progress, Section, Segmented, Stat, cx } from '@/ui/kit';
 import { projectStats } from './projects';
+import { WeeklyReview } from './review';
 
-const TABS = [{ value: 'report', label: 'Report', icon: 'file' as const }, { value: 'productivity', label: 'Productivity', icon: 'tasks' as const }, { value: 'wellbeing', label: 'Wellbeing', icon: 'heart' as const }, { value: 'money', label: 'Money', icon: 'wallet' as const }, { value: 'goals', label: 'Goals', icon: 'target' as const }];
+const TABS = [{ value: 'report', label: 'Report', icon: 'file' as const }, { value: 'review', label: 'Weekly review', icon: 'checklist' as const }, { value: 'productivity', label: 'Productivity', icon: 'tasks' as const }, { value: 'wellbeing', label: 'Wellbeing', icon: 'heart' as const }, { value: 'money', label: 'Money', icon: 'wallet' as const }, { value: 'goals', label: 'Goals', icon: 'target' as const }];
 
 const sum = (list: Rec[], key = 'minutes') => list.reduce((a, r) => a + (Number(r[key]) || 0), 0);
 const within = (value: unknown, from: Date, to: Date) => { const d = parseDate(value); return !!d && d >= from && d < to; };
@@ -111,6 +112,7 @@ export default function Insights({ sub }: ModuleProps) {
         </div>
       )}
 
+      {tab === 'review' && <WeeklyReview />}
       {tab === 'productivity' && (
         <div className="space-y-5">
           {need('tasks', <Section title="Task trends — created vs completed (14 days)" icon="tasks"><div className="card"><Bars data={trend} series={[{ key: 'created', name: 'Created', color: 'var(--faint)' }, { key: 'done', name: 'Completed', color: 'var(--good)' }]} label="Tasks created and completed per day" /></div></Section>)}

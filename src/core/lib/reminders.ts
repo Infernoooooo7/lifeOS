@@ -1,6 +1,7 @@
 import type { Fields } from '@/core/sync/merge';
 import { addDays, diffDays, nextAnnual, parseDate, ymd } from './dates';
 import { contactStatus, lastContacts, upcomingBirthdays } from './people';
+import { reviewEntryId, reviewWeek } from './review';
 import { occurrences, type Recurrence } from './recurrence';
 
 /**
@@ -12,7 +13,7 @@ export interface DueNotification {
   id: string;
   title: string;
   body: string;
-  kind: 'task' | 'event' | 'habit' | 'renewal' | 'date' | 'document' | 'budget' | 'person';
+  kind: 'task' | 'event' | 'habit' | 'renewal' | 'date' | 'document' | 'budget' | 'person' | 'review';
   source: string;
   sourceId: string;
   dueAt: string;
@@ -32,6 +33,7 @@ export interface ReminderInput {
   maintenance?: R[];
   people?: R[];
   interactions?: R[];
+  journal?: R[];
 }
 
 export interface ReminderPrefs {
@@ -42,6 +44,10 @@ export interface ReminderPrefs {
   dates?: boolean;
   /** keep-in-touch and birthday reminders from People */
   people?: boolean;
+  /** weekly review reminder, from `reviewDay` (0 = Sunday) until the week has a saved review */
+  review?: boolean;
+  reviewDay?: number;
+  weekStart?: number;
   /** minutes before an event when it has no reminders of its own */
   eventLead?: number;
   /** days before a renewal / important date */
@@ -141,6 +147,16 @@ export function dueNotifications(input: ReminderInput, now: Date, prefs: Reminde
         body: `${String(b.person.name ?? '')}${b.turning ? ` turns ${b.turning}` : ''}${b.daysLeft > 0 ? ` ${b.daysLeft === 1 ? 'tomorrow' : `in ${b.daysLeft} days`}` : ''}`,
         kind: 'person', source: 'people', sourceId: b.person.id, dueAt: b.date.toISOString(),
       });
+    }
+  }
+  if (prefs.review && input.journal) {
+    const day = prefs.reviewDay ?? 0;
+    const week = reviewWeek(now, prefs.weekStart ?? 1);
+    // Due from the review day of that week (or right away on Monday for a Sunday review of the week just ended).
+    const reviewDate = addDays(week.start, (day - week.start.getDay() + 7) % 7);
+    const done = input.journal.some((j) => j.id === reviewEntryId(week.key) && !j.deletedAt);
+    if (!done && now >= reviewDate) {
+      out.push({ id: `nt:review:${week.key}`, title: 'Weekly review', body: 'Ten minutes to close the week and choose what matters next.', kind: 'review', source: 'insights', sourceId: week.key, dueAt: reviewDate.toISOString() });
     }
   }
   return out;

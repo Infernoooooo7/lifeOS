@@ -37,10 +37,10 @@ export async function deliver(n: { id: string; title: string; body: string }, bu
 /** Create inbox entries for everything that has become due. Ids are deterministic, so this is idempotent. */
 export async function runReminders(): Promise<void> {
   if (!hasDb() || !prefs || !prefs.onboarded) return;
-  const [tasks, events, habits, habitLogs, subscriptions, dates, files, licenses, maintenance, people, interactions] = await Promise.all(
-    ['tasks', 'events', 'habits', 'habitLogs', 'subscriptions', 'dates', 'files', 'licenses', 'maintenance', 'people', 'interactions'].map((c) => list(c)),
+  const [tasks, events, habits, habitLogs, subscriptions, dates, files, licenses, maintenance, people, interactions, journal] = await Promise.all(
+    ['tasks', 'events', 'habits', 'habitLogs', 'subscriptions', 'dates', 'files', 'licenses', 'maintenance', 'people', 'interactions', 'journal'].map((c) => list(c)),
   );
-  const due = dueNotifications({ tasks, events, habits, habitLogs, subscriptions, dates, files, licenses, maintenance, people, interactions }, new Date(), prefs.notify);
+  const due = dueNotifications({ tasks, events, habits, habitLogs, subscriptions, dates, files, licenses, maintenance, people, interactions, journal }, new Date(), { ...prefs.notify, weekStart: prefs.weekStart });
   const budget = { left: 3 }; // never flood: at most three pop-ups per pass, the rest wait in the inbox
   for (const n of due) {
     if (await getRec(n.id)) continue;

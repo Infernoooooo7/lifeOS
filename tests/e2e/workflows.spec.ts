@@ -302,3 +302,25 @@ test.describe('people', () => {
     await expect(page.getByRole('heading', { name: 'Kabir Shah', level: 1 })).toBeVisible();
   });
 });
+
+test.describe('weekly review', () => {
+  test('triage an overdue task, reflect, pick priorities and save to the journal', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/insights/review');
+    await expect(page.getByRole('heading', { name: 'Look back at the week' })).toBeVisible();
+    await page.getByRole('button', { name: 'Next: Overdue' }).click();
+    const overdue = page.locator('section[aria-labelledby="review-step-title"] .row', { hasText: 'Pay electricity bill' });
+    await overdue.getByRole('button', { name: 'Next week' }).click();
+    await expect(page.getByText('“Pay electricity bill” moved to next week')).toBeVisible();
+    await expect(overdue).toHaveCount(0);
+    await page.getByRole('button', { name: /Reflect/ }).click();
+    await page.getByLabel('What went well?').fill('Shipped the homepage draft.');
+    await page.getByRole('checkbox', { name: 'Priority: Write homepage copy' }).click();
+    await page.getByRole('button', { name: 'Finish review' }).click();
+    await expect(page.getByText('Weekly review saved to your journal')).toBeVisible();
+    await expect(page.getByText(/Done today/)).toBeVisible();
+    await page.goto('/app/journal/entries');
+    await expect(page.locator('#main-scroll .row', { hasText: 'Weekly review' }).first()).toBeVisible();
+  });
+});

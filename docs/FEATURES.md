@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**301 capabilities in 25 modules** — 288 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**306 capabilities in 25 modules** — 293 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -36,7 +36,7 @@
 | Life admin | Lifestyle | 10 | 0 | 0 | 0 |
 | Utilities | Lifestyle | 10 | 0 | 0 | 0 |
 | Automation | System | 9 | 0 | 0 | 2 |
-| Insights | System | 11 | 0 | 0 | 0 |
+| Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
 | Settings | System | 31 | 0 | 1 | 2 |
@@ -442,6 +442,11 @@ _Your data, explained._ Module id `insights` · on by default
 | ✅ | Savings progress | Savings rate and savings-goal progress. | `insights.savings` |
 | ✅ | Fitness trends | Workouts per week, weight and sleep. | `insights.fitness` |
 | ✅ | Weekly report | A generated summary of the week from your data. | `insights.weekly` |
+| ✅ | Guided weekly review | Six steps: wins, overdue triage, undecided tasks, the week ahead, goals, reflection and three priorities. | `insights.review` |
+| ✅ | One-tap triage | Move an overdue or undated task to tomorrow or next week, finish it, park it for someday or delete it. | `insights.review-triage` |
+| ✅ | Reviews saved to the journal | Each review becomes a weekly reflection entry; reviewing again in the same week updates it. | `insights.review-journal` |
+| ✅ | Review streak and reminder | Weeks reviewed in a row, and a reminder on your chosen review day until the week is closed. | `insights.review-streak` |
+| ✅ | Weekly review widget | Home widget with this week’s status and a start button. | `insights.review-widget` |
 | ✅ | Monthly report | A generated summary of the month from your data. | `insights.monthly` |
 | ✅ | Goal completion | Achieved versus active goals and average progress. | `insights.goals` |
 

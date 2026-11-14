@@ -14,6 +14,7 @@ import { byDate, isDue, periodProgress, streaks } from '@/core/lib/habits';
 import { DEFAULT_RATES, fmtMoney, inMonth, totals, type Txn } from '@/core/lib/money';
 import { lastContacts, reconnectQueue, upcomingBirthdays } from '@/core/lib/people';
 import { parseQuickTask } from '@/core/lib/quickadd';
+import { reviewEntryId, reviewStreak, reviewSummary, reviewWeek } from '@/core/lib/review';
 import { compareTasks, isDone, isDueToday, isOpen, isOverdue, type TaskLike } from '@/core/lib/tasks';
 import { Page, type ModuleProps } from '@/shell/Page';
 import { useUpcomingEvents } from '@/shell/Shell';
@@ -426,6 +427,25 @@ function KeepInTouch() {
   );
 }
 
+function ReviewWidget() {
+  const [prefs] = usePrefs();
+  const now = useNow();
+  const tasks = useRecords('tasks');
+  const journal = useRecords('journal');
+  const week = reviewWeek(now, prefs.weekStart);
+  const done = journal.some((j) => j.id === reviewEntryId(week.key));
+  const s = useMemo(() => reviewSummary({ tasks: tasks as never }, now, week), [tasks, now, week]);
+  const streak = reviewStreak(journal, now, prefs.weekStart);
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <p className="text-sm text-muted">
+        {done ? `This week is reviewed${streak > 1 ? ` — ${streak} weeks in a row` : ''}.` : `${s.completed.length} done this week · ${s.overdue.length} overdue · ${s.inbox.length} undecided.`}
+      </p>
+      <Button size="sm" variant={done ? undefined : 'primary'} icon={done ? 'checkCircle' : 'checklist'} className="self-start" onClick={() => navigate('/insights/review')}>{done ? 'Open review' : 'Start weekly review'}</Button>
+    </div>
+  );
+}
+
 const WIDGETS: Record<string, WidgetDef> = {
   today: { name: 'Daily overview', description: "Today's tasks, events, habits and focus", icon: 'sun', module: 'home', size: 'l', render: () => <DailyOverview /> },
   week: { name: 'Weekly overview', description: 'Completed tasks and habit check-ins, last 7 days', icon: 'chart', module: 'home', size: 'l', render: () => <WeeklyOverview /> },
@@ -442,13 +462,14 @@ const WIDGETS: Record<string, WidgetDef> = {
   capture: { name: 'Quick capture', description: 'One-tap capture buttons', icon: 'plus', module: 'home', size: 'm', render: () => <CaptureWidget /> },
   stats: { name: 'Personal statistics', description: 'Totals computed from your data', icon: 'trending', module: 'home', size: 'm', render: () => <PersonalStats /> },
   people: { name: 'Keep in touch', description: 'Who is due a catch-up, and birthdays soon', icon: 'users', module: 'people', size: 'm', link: '/people', render: () => <KeepInTouch /> },
+  review: { name: 'Weekly review', description: 'Close the week: wins, overdue, inbox, focus', icon: 'checklist', module: 'insights', size: 'm', link: '/insights/review', render: () => <ReviewWidget /> },
   activity: { name: 'Recent activity', description: 'What you created and completed', icon: 'activity', module: 'home', size: 'm', render: () => <RecentActivity /> },
 };
 
 const TEMPLATES: Record<string, { name: string; description: string; widgets: [string, Size][] }> = {
   default: { name: 'Everyday', description: 'A balanced start page', widgets: [['today', 'l'], ['tasks', 'l'], ['events', 'm'], ['habits', 'l'], ['deadlines', 'm'], ['goals', 'm'], ['notes', 'm'], ['finance', 'm'], ['activity', 'm']] },
   focus: { name: 'Focus', description: 'Only what needs doing now', widgets: [['tasks', 'xl'], ['focus', 'm'], ['deadlines', 'm'], ['habits', 'm']] },
-  planner: { name: 'Planner', description: 'Week, deadlines and projects', widgets: [['week', 'l'], ['events', 'l'], ['deadlines', 'm'], ['projects', 'm'], ['goals', 'm'], ['tasks', 'xl']] },
+  planner: { name: 'Planner', description: 'Week, deadlines and projects', widgets: [['week', 'l'], ['events', 'l'], ['deadlines', 'm'], ['review', 'm'], ['projects', 'm'], ['goals', 'm'], ['tasks', 'xl']] },
   money: { name: 'Money', description: 'Finance first', widgets: [['finance', 'l'], ['reminders', 'l'], ['goals', 'm'], ['deadlines', 'm'], ['capture', 'm']] },
   wellbeing: { name: 'Wellbeing', description: 'Habits, focus, people and reflection', widgets: [['habits', 'xl'], ['focus', 'm'], ['people', 'm'], ['today', 'l'], ['stats', 'm'], ['notes', 'm']] },
 };
