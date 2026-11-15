@@ -834,3 +834,11 @@ dialog.sheet.side[open] {
   .no-print { display: none !important; }
   html, body { background: #fff; color: #000; }
 }
+
+/* Landing hero: the 3D life core fades into the page at its edges instead of ending in a hard square. */
+.hero-canvas {
+  mask-image: radial-gradient(closest-side, #000 58%, rgb(0 0 0 / 0.6) 78%, transparent 100%);
+}
+.hero-canvas canvas {
+  touch-action: pan-y;
+}

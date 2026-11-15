@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { MODULES, featureCounts } from '@/core/registry';
+import { HeroVisual } from '@/landing/HeroVisual';
 import { Logo } from '@/shell/AuthScreen';
 import { Icon } from '@/ui/icons';
 
@@ -26,7 +27,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-10 md:grid-cols-[1.1fr_0.9fr] md:pt-20">
+      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-10 md:grid-cols-[1fr_1fr] md:pt-16">
         <div>
           <p className="eyebrow">The personal operating system</p>
           <h1 className="mt-3 text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">
@@ -43,21 +44,7 @@ export default function Landing() {
           </div>
           <p className="mt-3 text-sm text-faint">No account needed to try it: start on this device, create an account later and keep your data.</p>
         </div>
-        <div className="relative mx-auto aspect-square w-full max-w-[420px]" aria-hidden="true">
-          <div className="glass absolute inset-[8%] !rounded-full" />
-          <div className="glass absolute inset-[24%] !rounded-full" />
-          <div className="absolute inset-[38%] rounded-full bg-gradient-to-br from-cyan to-violet opacity-90 blur-[2px]" />
-          <div className="absolute inset-[30%] rounded-full bg-accent opacity-20 blur-2xl" />
-          {modules.slice(0, 12).map((m, i) => {
-            const angle = (i / 12) * Math.PI * 2;
-            const r = i % 2 ? 42 : 26;
-            return (
-              <span key={m.id} className="tile absolute size-11 -translate-x-1/2 -translate-y-1/2 backdrop-blur-md" style={{ left: `${50 + Math.cos(angle) * r}%`, top: `${50 + Math.sin(angle) * r}%`, "--mh": m.hue } as CSSProperties}>
-                <Icon name={m.icon} size={20} />
-              </span>
-            );
-          })}
-        </div>
+        <HeroVisual modules={modules.map((m) => ({ id: m.id, name: m.name, tagline: m.tagline, hue: m.hue, icon: m.icon }))} />
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-5 pb-14">

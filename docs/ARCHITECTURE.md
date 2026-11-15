@@ -177,6 +177,15 @@ reference rows of the same user — cross-user access is impossible at the schem
 ## 9. Interface
 
 - **Design tokens** in `src/app/globals.css`: dark and light themes, one accent hue, density scale, widget styles.
+- **Landing hero** (`src/landing/`): a real-time "life core" in three.js. A noise-displaced plasma core sits in a
+  thin-film glass shell with a geodesic lattice and HDR rings. Around it are a 26 000-particle accretion disc on
+  Keplerian orbits (positions computed in the vertex shader), a starfield and an fbm nebula, and every module as a
+  glass moon carrying its own icon (the app's SVG icons drawn to textures). Data packets travel bezier streams to the
+  core, with selective-looking bloom (threshold 1.0, so only HDR highlights glow). Hovering a moon names it.
+  Everything is procedural; nothing is downloaded. The 2D orbit renders server-side first. The scene loads in its own
+  chunk when the browser is idle and has WebGL 2, fades in after its third frame, picks a detail tier per device
+  (particles, subdivision, noise octaves, pixel ratio), steps resolution and bloom down when the frame rate drops,
+  stops rendering while scrolled out of view, and draws one still frame under `prefers-reduced-motion`.
 - **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over a static aurora of the
   accent hue (plus a faint grain) and a pointer-following sheen (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar,
   top bar, context panel, phone tab bar and side sheets float as rounded glass panes. `prefers-reduced-transparency` and
