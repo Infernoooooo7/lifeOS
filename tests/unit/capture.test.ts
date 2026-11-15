@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyCapture } from '@/core/lib/capture';
+import { classifyCapture, sharedCapture } from '@/core/lib/capture';
 
 const now = new Date('2026-11-14T10:00:00');
 const c = (s: string) => classifyCapture(s, now);
@@ -35,5 +35,25 @@ describe('smart capture', () => {
   it('falls back to a task with dates, priority and tags', () => {
     expect(c('Pay rent tomorrow !high #home')).toMatchObject({ kind: 'task', title: 'Pay rent', when: '2026-11-15', priority: 3, tags: ['home'] });
     expect(c('Buy 2 kg rice')).toMatchObject({ kind: 'task' }); // a number is not an expense on its own
+  });
+});
+
+describe('shared from another app', () => {
+  it('turns a shared page into a link draft, wherever the address arrives', () => {
+    expect(sharedCapture({ title: 'How sleep works', url: 'https://example.org/sleep' })).toEqual({ kind: 'smart', text: 'https://example.org/sleep How sleep works' });
+    // Android Chrome puts the address in the text
+    expect(sharedCapture({ title: 'How sleep works', text: 'https://example.org/sleep' })).toEqual({ kind: 'smart', text: 'https://example.org/sleep How sleep works' });
+    expect(sharedCapture({ text: 'Worth reading https://example.org/a?b=1' })).toEqual({ kind: 'smart', text: 'https://example.org/a?b=1 Worth reading' });
+    const link = classifyCapture(sharedCapture({ title: 'How sleep works', url: 'https://example.org/sleep' })!.text);
+    expect(link).toMatchObject({ kind: 'link', url: 'https://example.org/sleep', title: 'How sleep works' });
+  });
+
+  it('keeps a passage of text as a note and leaves a short line to be classified', () => {
+    const passage = 'First line of a quote.\nSecond line that goes on for a while.';
+    expect(sharedCapture({ text: passage })).toEqual({ kind: 'note', text: 'First line of a quote.', body: passage });
+    expect(sharedCapture({ title: 'From Kindle', text: 'x'.repeat(200) })).toMatchObject({ kind: 'note', text: 'From Kindle' });
+    expect(sharedCapture({ text: 'call the plumber tomorrow' })).toEqual({ kind: 'smart', text: 'call the plumber tomorrow' });
+    expect(sharedCapture({ title: '', text: '  ', url: null })).toBeNull();
+    expect(sharedCapture({ url: 'javascript:alert(1)' })).toBeNull();
   });
 });

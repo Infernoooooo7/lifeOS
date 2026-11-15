@@ -7,6 +7,7 @@ test('ships a valid web app manifest and icons', async ({ page, request }) => {
   const manifest = await (await request.get(href!)).json();
   expect(manifest).toMatchObject({ name: expect.stringContaining('LIFEOS'), short_name: 'LIFEOS', start_url: '/app', display: 'standalone' });
   expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true);
+  expect(manifest.share_target).toMatchObject({ action: '/app', method: 'GET', params: { title: 'share_title', text: 'share_text', url: 'share_url' } });
   for (const icon of manifest.icons) {
     const res = await request.get(icon.src);
     expect(res.status(), icon.src).toBe(200);

@@ -80,6 +80,22 @@ Every record on a device is one flat object in the `records` table of an Indexed
   the same day's record merge.
 - **Workspaces** are a `ws` field; switching workspace only changes a filter.
 
+### Undo and redo
+
+`src/core/data/undo.ts` listens to the store's change events and keeps, in memory, the values each change replaced
+(up to 100 steps for this session on this device).
+
+- **Steps:** changes within 350 ms of each other form one step (a bulk action, or completing a repeating task together
+  with the next instance it schedules). Repeated saves of the same fields of one record within 5 s collapse into one
+  step, so typing with autosave is undone in one go.
+- **Applying:** undo writes the old values back as an ordinary change (creations go to the trash, deletions are
+  restored), so it syncs and merges like any other edit. A new change clears redo.
+- **Left out:** bookkeeping collections, background engines (wrapped in `withoutUndo`), changes arriving from sync
+  (they do not pass through the store), and encrypted journal entries. An operation of more than 500 changes clears
+  the history instead of flooding it.
+- **Reaching it:** Ctrl/⌘+Z and Ctrl/⌘+Shift+Z (or Ctrl+Y) outside text fields and open forms, where the browser's
+  own undo applies; "Undo: …" and "Redo: …" in the command palette; and a Redo/Undo button on each toast.
+
 ## 5. Synchronisation
 
 One endpoint, `POST /api/sync`, both pushes and pulls.
@@ -182,6 +198,12 @@ reference rows of the same user — cross-user access is impossible at the schem
   - `tests/unit/service-worker.test.ts` runs the generated worker against an in-memory Cache API to check this.
 - A new deployment produces a new worker; the app shows "A new version is ready — Update".
 - **Installable:** Chrome reports no installability errors (checked in `tests/e2e/pwa.spec.ts`).
+  - **Share target:** the manifest registers LIFEOS in the system share sheet (`share_target`, GET to `/app`).
+    `sharedCapture` in `src/core/lib/capture.ts` turns what arrives into a quick-capture draft: a page becomes a link
+    (Android puts the address in the text), a passage a note, a short line is classified. Only `http(s)` addresses
+    are accepted, and the parameters are removed from the address bar at once.
+  - **Icon badge:** where the Badging API exists, the installed app's icon shows the number of open tasks due today
+    or overdue (`dueCount`), updated as tasks change; it can be switched off in Settings → Notifications.
   - The manifest has 192/512 and maskable icons, shortcuts and standalone display, with safe-area handling.
   - The browser's install prompt is captured from the first moment the app or landing page loads, and offered as
     "Install app" on the landing page and in Settings → About & install. iPhone and iPad get the Share → Add to Home

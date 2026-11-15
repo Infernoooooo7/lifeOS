@@ -178,6 +178,11 @@ function Notifications({ prefs, set }: { prefs: Prefs; set: (p: Partial<Prefs>) 
           <Switch checked={n.browser && permission === 'granted'} disabled={permission === 'denied' || permission === 'unsupported'} label="System notifications" onChange={async (v) => { if (!v) return patch({ browser: false }); const result = await requestNotificationPermission(); patch({ browser: result === 'granted', asked: true }); if (result !== 'granted') toast('Permission was not granted.'); }} />
         </Row>
       </Card>
+      {typeof navigator !== 'undefined' && 'setAppBadge' in navigator && (
+        <Card title="App icon">
+          <Row title="Badge with tasks due" hint="When LIFEOS is installed, its icon shows how many tasks are due today or overdue."><Switch checked={n.badge !== false} onChange={(v) => patch({ badge: v })} label="App icon badge" /></Row>
+        </Card>
+      )}
       <Card title="Quiet hours">
         <Row title="Pause pop-ups" hint="Reminders still collect in the inbox; nothing pops up during these hours."><Switch checked={prefs.quiet.enabled} onChange={(v) => set({ quiet: { ...prefs.quiet, enabled: v } })} label="Quiet hours" /></Row>
         {prefs.quiet.enabled && <Row title="From / to"><input type="time" className="input !w-32" aria-label="Quiet from" value={prefs.quiet.from} onChange={(e) => set({ quiet: { ...prefs.quiet, from: e.target.value } })} /><span className="text-muted">to</span><input type="time" className="input !w-32" aria-label="Quiet until" value={prefs.quiet.to} onChange={(e) => set({ quiet: { ...prefs.quiet, to: e.target.value } })} /></Row>}

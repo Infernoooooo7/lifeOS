@@ -532,3 +532,76 @@ test.describe('money on autopilot', () => {
     await expect(rows).toHaveCount(n);
   });
 });
+
+test.describe('undo, sharing and memories', () => {
+  test('Ctrl+Z takes back the last change anywhere, and it can be redone', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/tasks');
+    await page.getByLabel('Quick add task').fill('Call the bank');
+    await page.getByLabel('Quick add task').press('Enter');
+    const row = page.locator('#main-scroll').getByRole('button', { name: /^Call the bank/ });
+    await expect(row).toBeVisible();
+    const heading = page.getByRole('heading', { name: 'Tasks', level: 1 });
+    await heading.click(); // leave the text field: inside one, the browser's own undo applies
+    await page.keyboard.press('Control+z');
+    await expect(page.getByText('Undone: Task “Call the bank” added')).toBeVisible();
+    await expect(row).toHaveCount(0);
+    await page.getByRole('button', { name: 'Redo' }).click();
+    await expect(row).toBeVisible();
+    // an edit made in the editor is one step
+    await row.click();
+    const editor = page.getByRole('dialog', { name: 'Edit task' });
+    await editor.getByLabel('Title').fill('Call the bank about the card');
+    await editor.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^Call the bank about the card/ })).toBeVisible();
+    await heading.click();
+    await page.keyboard.press('Control+z');
+    await expect(page.getByText(/Undone: Task “Call the bank about the card” edited/)).toBeVisible();
+    // the palette offers undo by the word, never because a record's name was searched
+    await page.keyboard.press('Control+k');
+    const palette = page.locator('#palette-list');
+    await page.getByLabel('Search everything or type a command').fill('Call the bank');
+    await expect(palette.getByRole('option', { name: /Call the bank/ }).first()).toBeVisible();
+    await expect(palette.getByRole('option', { name: /^(Undo|Redo):/ })).toHaveCount(0);
+    await page.getByLabel('Search everything or type a command').fill('redo');
+    await expect(palette.getByRole('option', { name: /Redo: Task/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#main-scroll').getByRole('button', { name: /^Call the bank about the card/ })).toHaveCount(0);
+    await expect(row).toBeVisible();
+  });
+
+  test('something shared from another app opens quick capture, filled in', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app?share_title=How%20sleep%20works&share_text=https%3A%2F%2Fexample.org%2Fsleep');
+    const sheet = page.getByRole('dialog', { name: 'Quick capture' });
+    await expect(sheet.getByLabel('Anything', { exact: true })).toHaveValue('https://example.org/sleep How sleep works');
+    await expect(sheet.getByLabel('Will be saved as')).toContainText('Link');
+    await expect(page).toHaveURL(/\/app$/); // the shared text does not stay in the address bar
+    await sheet.getByRole('button', { name: 'Save link' }).click();
+    await expect(page.getByText('Link saved')).toBeVisible();
+    await page.goto('/app/digital');
+    await expect(page.locator('#main-scroll').getByText('How sleep works').first()).toBeVisible();
+  });
+
+  test('"On this day" brings back what was written a week ago', async ({ page }) => {
+    await startLocal(page);
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+    const date = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, '0')}-${String(weekAgo.getDate()).padStart(2, '0')}`;
+    await page.goto('/app/journal/entries');
+    await page.getByRole('button', { name: 'Entry', exact: true }).click();
+    const editor = page.getByRole('dialog', { name: 'New journal entry' });
+    await editor.getByLabel('Date').fill(date);
+    await editor.getByLabel('Entry', { exact: true }).fill('Walked the long way home and saw the first lights go up.');
+    await editor.getByRole('button', { name: 'Add journal entry' }).click();
+    await expect(page.getByText('Journal entry added')).toBeVisible();
+    await page.goto('/app');
+    await page.getByRole('button', { name: 'Customize' }).click();
+    await page.getByRole('button', { name: 'Add widget' }).click();
+    await page.getByRole('dialog', { name: 'Add a widget' }).getByRole('button', { name: /^On this day/ }).click();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Done' }).click();
+    const widget = page.locator('.widget', { hasText: 'On this day' });
+    await expect(widget).toContainText('Walked the long way home');
+    await expect(widget).toContainText('1 week ago');
+  });
+});

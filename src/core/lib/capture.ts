@@ -99,3 +99,29 @@ function event(text: string, now: Date): SmartCapture | null {
   if (!p.dueAt) return null;
   return { kind: 'event', title: (p.title || text).replace(/^./, (c) => c.toUpperCase()), when: p.dueAt };
 }
+
+/**
+ * What another app shared with LIFEOS (the system share sheet of an installed app), turned into a quick-capture
+ * draft. Browsers put a shared page's address in `url` or — Android does this — at the end of `text`.
+ */
+export function sharedCapture(share: { title?: string | null; text?: string | null; url?: string | null }): { kind: 'smart' | 'note'; text: string; body?: string } | null {
+  const title = (share.title ?? '').trim();
+  let text = (share.text ?? '').trim();
+  let url = (share.url ?? '').trim();
+  if (!url) {
+    const found = /https?:\/\/\S+/i.exec(text);
+    if (found) {
+      url = found[0];
+      text = (text.slice(0, found.index) + text.slice(found.index + found[0].length)).trim();
+    }
+  }
+  if (url && /^https?:\/\//i.test(url)) {
+    // A link: "Anything" files it as a bookmark, titled with the page title (or the shared words).
+    const label = title || (text.length <= 120 ? text : '');
+    return { kind: 'smart', text: `${url} ${label}`.trim() };
+  }
+  if (!title && !text) return null;
+  // A passage of text is a note; a short line is left to "Anything" to work out (task, expense, event…).
+  if (text.length > 120 || text.includes('\n')) return { kind: 'note', text: title || text.split('\n')[0].slice(0, 80), body: text };
+  return { kind: 'smart', text: text || title };
+}

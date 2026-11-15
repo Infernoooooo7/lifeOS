@@ -9,6 +9,8 @@ import { search, type SearchHit } from '@/core/lib/search';
 import { MODULES } from '@/core/registry';
 import { Icon, type IconName } from '@/ui/icons';
 import { Sheet, cx } from '@/ui/kit';
+import { useUndo } from '@/core/data/undo';
+import { redoWithToast, undoWithToast } from './history';
 
 interface Command {
   id: string;
@@ -17,6 +19,8 @@ interface Command {
   icon: IconName | string;
   run: () => void;
   keywords?: string;
+  /** when set, the command is found by these words only, never by its label (which may quote a record's name) */
+  only?: string;
 }
 
 /** Which module owns a collection — used to hide results from modules that are switched off. */
@@ -74,6 +78,7 @@ export function Palette() {
     };
   }, [query, open, allowed]);
 
+  const history = useUndo();
   const commands = useMemo<Command[]>(() => {
     const close = () => useApp.setState({ palette: false });
     const cmds: Command[] = [
@@ -87,14 +92,16 @@ export function Palette() {
       { id: 'theme', label: `Switch to ${prefs.theme === 'light' ? 'dark' : 'light'} theme`, icon: prefs.theme === 'light' ? 'moon' : 'sun', run: () => (setPrefs({ theme: prefs.theme === 'light' ? 'dark' : 'light' }), close()), keywords: 'appearance mode' },
       ...(enabled.has('calendar') && enabled.has('tasks') ? [{ id: 'plan-day', label: 'Plan my day', icon: 'wand', run: () => navigate('/calendar/plan'), keywords: 'schedule time block auto' }] : []),
       ...(enabled.has('insights') ? [{ id: 'review', label: 'Start weekly review', icon: 'checklist', run: () => navigate('/insights/review'), keywords: 'week reflect gtd' }] : []),
+      ...(history.undo ? [{ id: 'undo', label: `Undo: ${history.undo}`, icon: 'refresh' as const, hint: 'Ctrl Z', run: () => (close(), void undoWithToast()), only: 'undo revert take back mistake' }] : []),
+      ...(history.redo ? [{ id: 'redo', label: `Redo: ${history.redo}`, icon: 'refresh' as const, run: () => (close(), void redoWithToast()), only: 'redo again' }] : []),
       { id: 'sync', label: 'Sync now', icon: 'refresh', run: () => (void syncNow(), close()), keywords: 'refresh cloud' },
       { id: 'backup', label: 'Export a backup', icon: 'download', run: () => navigate('/settings/data'), keywords: 'download json' },
       { id: 'shortcuts', label: 'Keyboard shortcuts', icon: 'command', hint: '?', run: () => useApp.setState({ palette: false, shortcuts: true }) },
     ];
     const q = query.trim().toLowerCase();
     if (!q) return cmds.slice(0, 6).concat(cmds.filter((c) => c.id.startsWith('go-')).slice(0, 6));
-    return cmds.filter((c) => `${c.label} ${c.keywords ?? ''}`.toLowerCase().includes(q)).slice(0, 6);
-  }, [query, enabled, prefs.theme, setPrefs]);
+    return cmds.filter((c) => (c.only ?? `${c.label} ${c.keywords ?? ''}`).toLowerCase().includes(q)).slice(0, 6);
+  }, [query, enabled, prefs.theme, setPrefs, history.undo, history.redo]);
 
   const rows = useMemo(
     () => [

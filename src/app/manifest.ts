@@ -19,6 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
+    // Installed, LIFEOS appears in the system share sheet: a shared link, page or text opens quick capture, filled in.
+    share_target: { action: '/app', method: 'GET', enctype: 'application/x-www-form-urlencoded', params: { title: 'share_title', text: 'share_text', url: 'share_url' } },
     shortcuts: [
       { name: 'Quick capture', short_name: 'Capture', url: '/app?capture=1', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
       { name: 'Tasks', url: '/app/tasks', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },

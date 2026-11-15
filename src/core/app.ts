@@ -22,7 +22,7 @@ interface AppState {
   /** path inside the app, e.g. "/tasks/board" */
   path: string;
   palette: boolean;
-  capture: { open: boolean; kind?: string };
+  capture: { open: boolean; kind?: string; text?: string; body?: string };
   notifications: boolean;
   launcher: boolean;
   editor: EditorRequest | null;
@@ -70,7 +70,7 @@ export const useSegments = (): string[] => {
 
 export const openEditor = (collection: string, id?: string, defaults?: Fields, occurrence?: string) => useApp.setState({ editor: { collection, id, defaults, occurrence } });
 export const closeEditor = () => useApp.setState({ editor: null });
-export const openCapture = (kind?: string) => useApp.setState({ capture: { open: true, kind }, palette: false, launcher: false });
+export const openCapture = (kind?: string, seed: { text?: string; body?: string } = {}) => useApp.setState({ capture: { open: true, kind, ...seed }, palette: false, launcher: false });
 
 // ── Preferences ──────────────────────────────────────────────────────────────────────────────────
 
@@ -96,7 +96,7 @@ export interface Prefs {
   quickActions: string[];
   onboarded: boolean;
   interests: string[];
-  notify: { tasks: boolean; events: boolean; habits: boolean; renewals: boolean; dates: boolean; people: boolean; review: boolean; reviewDay: number; browser: boolean; asked: boolean; eventLead: number; leadDays: number };
+  notify: { tasks: boolean; events: boolean; habits: boolean; renewals: boolean; dates: boolean; people: boolean; review: boolean; reviewDay: number; browser: boolean; asked: boolean; /** show the number of tasks due on the installed app's icon */ badge: boolean; eventLead: number; leadDays: number };
   quiet: { enabled: boolean; from: string; to: string };
   /** preferred view per module/collection */
   views: Record<string, string>;
@@ -110,7 +110,7 @@ export const DEFAULT_PREFS: Prefs = {
   theme: 'dark', accentHue: 215, density: 'default', motion: 'full', widgetStyle: 'glass', weekStart: 1, hour12: true, dateStyle: 'dmy', currency: 'INR',
   mode: 'standard', spatialQuality: 'auto', sidebar: [], sidebarCollapsed: false, rightPanel: true, mobileTabs: ['tasks', 'calendar'],
   quickActions: ['task', 'note', 'event', 'expense'], onboarded: false, interests: [],
-  notify: { tasks: true, events: true, habits: true, renewals: true, dates: true, people: true, review: true, reviewDay: 0, browser: false, asked: false, eventLead: 15, leadDays: 3 },
+  notify: { tasks: true, events: true, habits: true, renewals: true, dates: true, people: true, review: true, reviewDay: 0, browser: false, asked: false, badge: true, eventLead: 15, leadDays: 3 },
   quiet: { enabled: false, from: '22:00', to: '07:00' }, views: {}, workHours: { from: '09:00', to: '18:00' }, waterTarget: 2000,
   focus: { work: 25, short: 5, long: 15, every: 4, goal: 120, auto: false }, rates: {},
 };

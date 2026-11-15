@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**327 capabilities in 26 modules** — 315 implemented, 4 partial, 1 integration-dependent, 7 planned.
+**331 capabilities in 26 modules** — 319 implemented, 4 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -15,7 +15,7 @@
 
 | Module | Category | Implemented | Partial | Integration | Planned |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Home | System | 7 | 0 | 0 | 0 |
+| Home | System | 8 | 0 | 0 | 0 |
 | Tasks | Productivity | 18 | 0 | 0 | 0 |
 | Calendar | Productivity | 18 | 0 | 0 | 1 |
 | Projects | Productivity | 13 | 0 | 0 | 0 |
@@ -40,7 +40,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 40 | 0 | 1 | 2 |
+| Settings | System | 43 | 0 | 1 | 2 |
 
 ## Home
 
@@ -54,6 +54,7 @@ _Your day at a glance._ Module id `home` · always on
 | ✅ | Dashboard templates | Start from Focus, Planner, Money or Wellbeing layouts. | `home.templates` |
 | ✅ | Daily overview | Today's tasks, events, habits and focus time in one summary. | `home.daily` |
 | ✅ | Weekly overview | Seven-day view of completed tasks, events and habit check-ins. | `home.weekly` |
+| ✅ | On this day | A widget that brings back journal entries, achievements, events and notes from this date a week, a month and years ago. Private entries never appear. | `home.memories` |
 | ✅ | Contextual side panel | Upcoming events, priorities, reminders and quick actions beside any module (desktop). | `home.context` |
 
 ## Tasks
@@ -518,6 +519,9 @@ _Make it yours._ Module id `settings` · always on
 | ✅ | Typo-tolerant search | Finds “metting” and “recieve”: one typo allowed from four letters, two from seven; exact and title matches rank first. | `platform.search-typos` |
 | ✅ | Command palette | Ctrl / ⌘ K to jump anywhere or run an action. | `platform.palette` |
 | ✅ | Quick capture | Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere. | `platform.capture` |
+| ✅ | Share to LIFEOS | Once installed, LIFEOS appears in the share sheet of your phone or computer: a shared page becomes a saved link, a passage a note, a short line whatever it reads as. | `platform.share-target` |
+| ✅ | Undo and redo anything | Ctrl / ⌘ + Z takes back your last change in any module — an edit, a deletion, a bulk action — and Shift brings it back. Also in the command palette. Covers this session on this device; encrypted entries are left out. | `platform.undo` |
+| ✅ | App icon badge | The installed app shows how many tasks are due today or overdue on its icon, where the system supports badges. | `platform.app-badge` |
 | ✅ | Capture anything | Type one line — “spent 450 on dinner”, “lunch with Ravi tomorrow 1pm”, “remind me to call mom at 6pm” — and it is filed as the right kind of record, shown before you save. Rules on the device, no AI service. | `platform.capture-smart` |
 | ✅ | Keyboard shortcuts | Navigation and action shortcuts with an in-app cheat sheet. | `platform.shortcuts` |
 | ✅ | Notification center | Task, event, habit, renewal and date reminders in one inbox. | `platform.notifications` |

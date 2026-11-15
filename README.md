@@ -4,14 +4,14 @@
 
 LIFEOS brings tasks, calendar, projects, notes, habits, goals, money, learning, health, journaling, people, travel and
 the rest of life's admin into one app with one search, one capture button and one set of data. It works offline,
-syncs across your phone, tablet and computer, and installs like a native app.
+syncs across your phone, tablet and computer, and installs like a native app — with its own entry in your phone's share sheet and a badge for tasks due.
 
 **Live:** https://lifeos-4x5e.onrender.com — try it without an account (data stays on your device), or create one to
 sync. On the free hosting tier, the first visit after a quiet spell can take up to a minute to wake the server.
 
 ## What is inside
 
-**327 capabilities in 26 modules — 315 implemented, 4 partial, 1 waiting on an integration, 7 planned.** Every
+**331 capabilities in 26 modules — 319 implemented, 4 partial, 1 waiting on an integration, 7 planned.** Every
 capability and its honest status is listed in [`docs/FEATURES.md`](docs/FEATURES.md) and in the in-app Marketplace,
 where each module can be switched on or off without losing data.
 
@@ -36,7 +36,7 @@ where each module can be switched on or off without losing data.
 | Insights | Reports and trends; a guided **weekly review** |
 | Spatial | Your data as a 3D space (WebGL, with a 2D fallback) |
 
-Around the modules: universal typo-tolerant search and command palette (Ctrl/⌘ K), quick capture from anywhere that works out what you typed (an expense, an event, a reminder…),
+Around the modules: universal typo-tolerant search and command palette (Ctrl/⌘ K), **undo and redo for any change (Ctrl/⌘ Z)**, quick capture from anywhere that works out what you typed (an expense, an event, a reminder…),
 reminders and an inbox, workspaces, custom fields and categories, dark and light themes with a liquid-glass interface,
 **end-to-end encrypted private journal entries**, full JSON backup and selective restore, and **imports from Todoist, Google Keep, Markdown (Notion, Obsidian, Bear) and
 bank statements (OFX, QFX, QIF)**.
@@ -80,8 +80,8 @@ Deployment (Render blueprint included; Vercel and plain Node hosts also work): [
 Every result below was produced by running it — see [`docs/TESTING.md`](docs/TESTING.md) for the full report,
 performance measurements and the defects that testing found.
 
-- 180 unit and API/sync tests against a real PostgreSQL database
-- 86 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
+- 190 unit and API/sync tests against a real PostgreSQL database
+- 92 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
   two-step sign-in, end-to-end encrypted journal entries across devices, and WCAG 2.1 AA accessibility checks (axe) in both themes
 - Every module route checked for console errors and horizontal overflow at desktop, tablet and phone widths
 

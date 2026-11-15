@@ -10,6 +10,7 @@ import { useEnabledModules, useNow, usePrefs, useRecords } from '@/core/data/hoo
 import { create, remove, titleOf, uid, update } from '@/core/data/store';
 import { addDays, diffDays, fmtDuration, fmtTime, greeting, parseDate, relativeDay, startOfDay, timeAgo, ym, ymd } from '@/core/lib/dates';
 import { goalProgress } from '@/core/lib/goals';
+import { onThisDay } from '@/core/lib/memories';
 import { byDate, isDue, periodProgress, streaks } from '@/core/lib/habits';
 import { DEFAULT_RATES, fmtMoney, inMonth, totals, type Txn } from '@/core/lib/money';
 import { lastContacts, reconnectQueue, upcomingBirthdays } from '@/core/lib/people';
@@ -428,6 +429,33 @@ function KeepInTouch() {
   );
 }
 
+/** Journal entries, achievements, events and notes from this date a week, a month and years ago. */
+function OnThisDay() {
+  const now = useNow();
+  const enabled = useEnabledModules();
+  const journal = useRecords(enabled.has('journal') ? 'journal' : '__none');
+  const achievements = useRecords(enabled.has('goals') ? 'achievements' : '__none');
+  const events = useRecords(enabled.has('calendar') ? 'events' : '__none');
+  const notes = useRecords(enabled.has('notes') ? 'notes' : '__none');
+  const today = ymd(now);
+  const memories = useMemo(() => onThisDay([...journal, ...achievements, ...events, ...notes], parseDate(today)!, 5), [journal, achievements, events, notes, today]);
+  if (!memories.length) return <Faint>Nothing from this day a week, a month or a year ago yet. What you write and do today will come back to you here.</Faint>;
+  return (
+    <div className="-mx-2">
+      {memories.map((m) => (
+        <button key={m.id} type="button" className="row w-full !items-start text-left" onClick={() => (m.collection === 'notes' ? navigate(`/notes/${m.id}`) : openEditor(m.collection, m.id))}>
+          <Icon name={m.collection === 'journal' ? 'journal' : m.collection === 'events' ? 'calendar' : m.collection === 'notes' ? 'notes' : 'trophy'} size={15} className="mt-1 flex-none text-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.7rem] font-semibold uppercase tracking-wider text-accent">{m.ago}</span>
+            <span className="block truncate">{m.title}</span>
+            {m.snippet && <span className="line-clamp-2 text-xs text-muted">{m.snippet}</span>}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ReviewWidget() {
   const [prefs] = usePrefs();
   const now = useNow();
@@ -464,6 +492,7 @@ const WIDGETS: Record<string, WidgetDef> = {
   stats: { name: 'Personal statistics', description: 'Totals computed from your data', icon: 'trending', module: 'home', size: 'm', render: () => <PersonalStats /> },
   people: { name: 'Keep in touch', description: 'Who is due a catch-up, and birthdays soon', icon: 'users', module: 'people', size: 'm', link: '/people', render: () => <KeepInTouch /> },
   review: { name: 'Weekly review', description: 'Close the week: wins, overdue, inbox, focus', icon: 'checklist', module: 'insights', size: 'm', link: '/insights/review', render: () => <ReviewWidget /> },
+  memories: { name: 'On this day', description: 'What you wrote and did on this date a week, a month and years ago', icon: 'history', module: 'home', size: 'm', render: () => <OnThisDay /> },
   activity: { name: 'Recent activity', description: 'What you created and completed', icon: 'activity', module: 'home', size: 'm', render: () => <RecentActivity /> },
 };
 
@@ -472,7 +501,7 @@ const TEMPLATES: Record<string, { name: string; description: string; widgets: [s
   focus: { name: 'Focus', description: 'Only what needs doing now', widgets: [['tasks', 'xl'], ['focus', 'm'], ['deadlines', 'm'], ['habits', 'm']] },
   planner: { name: 'Planner', description: 'Week, deadlines and projects', widgets: [['week', 'l'], ['events', 'l'], ['deadlines', 'm'], ['review', 'm'], ['projects', 'm'], ['goals', 'm'], ['tasks', 'xl']] },
   money: { name: 'Money', description: 'Finance first', widgets: [['finance', 'l'], ['reminders', 'l'], ['goals', 'm'], ['deadlines', 'm'], ['capture', 'm']] },
-  wellbeing: { name: 'Wellbeing', description: 'Habits, focus, people and reflection', widgets: [['habits', 'xl'], ['focus', 'm'], ['people', 'm'], ['today', 'l'], ['stats', 'm'], ['notes', 'm']] },
+  wellbeing: { name: 'Wellbeing', description: 'Habits, focus, people and reflection', widgets: [['habits', 'xl'], ['focus', 'm'], ['people', 'm'], ['today', 'l'], ['memories', 'm'], ['stats', 'm'], ['notes', 'm']] },
 };
 const fromTemplate = (key: string): WidgetInstance[] => TEMPLATES[key].widgets.map(([type, size]) => ({ id: uid().slice(0, 8), type, size }));
 

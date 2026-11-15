@@ -5,6 +5,7 @@ import { runOnEvent, runOnTick, lastDue, type Effect, type Rule } from '@/core/l
 import { ymd } from '@/core/lib/dates';
 import { dueNotifications, inQuietHours, type DueNotification } from '@/core/lib/reminders';
 import { toast } from '@/ui/overlays';
+import { withoutUndo } from '@/core/data/undo';
 
 /**
  * Background engines that run while the app is open: reminders and automation rules.
@@ -131,8 +132,8 @@ export function startEngines(): void {
   const tick = () => {
     if (!useApp.getState().ready) return;
     void runReminders().catch((e) => console.error('reminders failed', e));
-    void runAutomationTick().catch((e) => console.error('automation tick failed', e));
-    void runSubscriptionAutopost().catch((e) => console.error('subscription logging failed', e));
+    void withoutUndo(runAutomationTick).catch((e) => console.error('automation tick failed', e));
+    void withoutUndo(runSubscriptionAutopost).catch((e) => console.error('subscription logging failed', e));
   };
   setTimeout(tick, 4000);
   setInterval(tick, 60_000);

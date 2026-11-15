@@ -158,3 +158,6 @@ export function completionTrend(tasks: TaskLike[], days = 14, now: Date = new Da
   }
   return out;
 }
+
+/** Open tasks that are due today or overdue: the number shown on the installed app's icon. */
+export const dueCount = (tasks: TaskLike[], now: Date = new Date()): number => tasks.filter((t) => isOpen(t) && (isDueToday(t, now) || isOverdue(t, now))).length;

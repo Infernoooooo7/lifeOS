@@ -69,8 +69,8 @@ export function Capture() {
   useEffect(() => {
     if (!state.open) return;
     setKind(state.kind && kinds.some((k) => k.id === state.kind) ? state.kind : (kinds[0]?.id ?? 'task'));
-    setText('');
-    setBody('');
+    setText(state.text ?? ''); // seeded when something was shared to LIFEOS from another app
+    setBody(state.body ?? '');
     setAmount('');
     setCategory('');
     setMood(null);

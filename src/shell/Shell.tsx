@@ -4,14 +4,14 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import { Component, Suspense, lazy, useEffect, useMemo, useState, type CSSProperties, type ComponentType, type ReactNode } from 'react';
 import { ACCENTS, navigate, openCapture, openEditor, useApp, useSegments, type Prefs } from '@/core/app';
-import { useEnabledModules, useModules, usePrefs, useRecords, useSync, setModule, type ModuleState } from '@/core/data/hooks';
+import { useEnabledModules, useModules, useNow, usePrefs, useRecords, useSync, setModule, type ModuleState } from '@/core/data/hooks';
 import { queryClient } from '@/core/data/server';
 import { writeIdentity, api } from '@/core/data/session';
 import { create } from '@/core/data/store';
 import { syncNow, syncState } from '@/core/data/syncClient';
 import { fmtTime, formatPrefs, parseDate, relativeDay, timeAgo } from '@/core/lib/dates';
 import { occurrences, type Recurrence } from '@/core/lib/recurrence';
-import { compareTasks, isOpen, isOverdue, type TaskLike } from '@/core/lib/tasks';
+import { compareTasks, dueCount, isOpen, isOverdue, type TaskLike } from '@/core/lib/tasks';
 import { INTERESTS, MODULES, moduleDef, recommendedFor } from '@/core/registry';
 import { Icon, type IconName } from '@/ui/icons';
 import { Button, Checkbox, Empty, IconButton, Menu, Sheet, Spinner, cx, useMediaQuery, useScrollEdges } from '@/ui/kit';
@@ -28,6 +28,9 @@ import { LOADERS, warmModules } from './modules';
 import { NotificationCenter } from './Notifications';
 import type { ModuleProps } from './Page';
 import { Palette } from './Palette';
+import { startUndo } from '@/core/data/undo';
+import { redoWithToast, undoWithToast } from './history';
+import { sharedCapture } from '@/core/lib/capture';
 
 const loadMotion = () => import('@/ui/motionFeatures').then((r) => r.default);
 
@@ -585,12 +588,13 @@ function Onboarding({ onDone }: { onDone: () => void }) {
 
 const SHORTCUTS: [string, string][] = [
   ['Ctrl / ⌘ + K', 'Search and command palette'], ['/', 'Search'], ['C', 'Quick capture'], ['N', 'New task'], ['G then H', 'Go to Home'], ['G then T', 'Go to Tasks'], ['G then C', 'Go to Calendar'],
-  ['G then P', 'Go to Projects'], ['G then N', 'Go to Notes'], ['G then S', 'Go to Settings'], ['G then M', 'Go to Marketplace'], ['Ctrl / ⌘ + Enter', 'Save the open form'], ['Esc', 'Close dialogs'], ['?', 'Show this list'],
+  ['G then P', 'Go to Projects'], ['G then N', 'Go to Notes'], ['G then S', 'Go to Settings'], ['G then M', 'Go to Marketplace'], ['Ctrl / ⌘ + Z', 'Undo your last change'], ['Ctrl / ⌘ + Shift + Z', 'Redo'], ['Ctrl / ⌘ + Enter', 'Save the open form'], ['Esc', 'Close dialogs'], ['?', 'Show this list'],
 ];
 const GOTO: Record<string, string> = { h: '/', t: '/tasks', c: '/calendar', p: '/projects', n: '/notes', s: '/settings', m: '/marketplace', f: '/finance', i: '/insights' };
 
 function useGlobalShortcuts() {
   const enabled = useEnabledModules();
+  useEffect(() => startUndo(), []);
   useEffect(() => {
     let pendingG = 0;
     const onKey = (e: KeyboardEvent) => {
@@ -600,6 +604,12 @@ function useGlobalShortcuts() {
         return;
       }
       const t = e.target as HTMLElement | null;
+      // Undo / redo for changes to your data. Inside a text field or an open form the browser's own undo applies.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && t && !t.isContentEditable && !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !document.querySelector('dialog[open]')) {
+        e.preventDefault();
+        void (e.key.toLowerCase() === 'y' || e.shiftKey ? redoWithToast() : undoWithToast());
+        return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey || !t || t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || document.querySelector('dialog[open]')) return;
       const k = e.key.toLowerCase();
       if (pendingG && Date.now() - pendingG < 1200 && GOTO[k]) {
@@ -618,6 +628,19 @@ function useGlobalShortcuts() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [enabled]);
+}
+
+/** The installed app's icon carries the number of tasks due today or overdue (where the browser supports badges). */
+function useAppBadge(wanted: boolean) {
+  const on = useEnabledModules().has('tasks') && wanted;
+  const tasks = useRecords('tasks');
+  const now = useNow(60_000);
+  const count = useMemo(() => (on ? dueCount(tasks as unknown as TaskLike[], now) : 0), [on, tasks, now]);
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!nav.setAppBadge) return;
+    void (count > 0 ? nav.setAppBadge(count) : nav.clearAppBadge?.())?.catch(() => undefined);
+  }, [count]);
 }
 
 function useServiceWorker() {
@@ -663,12 +686,15 @@ export function Shell() {
   useApplyPrefs(prefs, loaded);
   useGlobalShortcuts();
   useServiceWorker();
+  useAppBadge(prefs.notify.badge !== false);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('capture')) {
-      openCapture();
-      window.history.replaceState(null, '', window.location.pathname);
-    }
+    const params = new URLSearchParams(window.location.search);
+    // Shared from another app (the share sheet of the installed app): open quick capture with it filled in.
+    const shared = sharedCapture({ title: params.get('share_title'), text: params.get('share_text'), url: params.get('share_url') });
+    if (shared) openCapture(shared.kind, { text: shared.text, body: shared.body });
+    else if (params.get('capture')) openCapture();
+    if (shared || params.get('capture')) window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
   // The focus timer runs for the whole app, not just while its module is open.
