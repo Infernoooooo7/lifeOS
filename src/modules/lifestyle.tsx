@@ -242,7 +242,7 @@ export function Travel({ sub }: ModuleProps) {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-3">
           {list.map((t) => { const start = parseDate(t.startDate); const days = start ? diffDays(now, start) : null; const status = TRIP_STATUSES.find((s) => s.value === t.status); return (
             <button key={t.id} type="button" className="card card-hover text-left" onClick={() => navigate(`/travel/${t.id}`)}>
-              <div className="flex items-start gap-2"><h3 className="min-w-0 flex-1 truncate font-sans text-[1.02rem] font-semibold tracking-normal">{t.name}</h3>{status && <span className="chip" style={{ color: status.color }}>{status.label}</span>}</div>
+              <div className="flex items-start gap-2"><h3 className="min-w-0 flex-1 truncate font-sans text-[1.02rem] font-semibold tracking-normal">{t.name}</h3>{status && <span className="chip chip-tone" style={{ '--tone': status.color } as React.CSSProperties}>{status.label}</span>}</div>
               <p className="mt-0.5 truncate text-sm text-muted">{t.destination || 'Destination to be decided'}</p>
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
                 {start && <span className="inline-flex items-center gap-1"><Icon name="calendar" size={12} />{fmtDate(start, { year: true })}</span>}

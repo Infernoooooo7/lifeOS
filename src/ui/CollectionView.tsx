@@ -84,15 +84,18 @@ function Row({ def, fields, rec, onOpen, selecting, selected, onSelect, extra }:
       ) : rec.color ? (
         <span className="mt-2 size-2.5 flex-none rounded-full" style={{ background: rec.color }} />
       ) : null}
-      <button type="button" onClick={selecting ? onSelect : onOpen} className="min-w-0 flex-1 py-1 text-left">
-        <span className={cx('block truncate font-medium', done && 'text-faint line-through', rec.private && 'blur-sm hover:blur-none focus:blur-none')}>{recordTitle(def.id, rec)}</span>
-        <span className={cx('mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted empty:hidden', overdue && '[&_.chip:has(svg.lucide-calendar)]:!border-bad/40 [&_.chip:has(svg.lucide-calendar)]:!text-bad')}>
-          <Badges fields={fields} rec={rec} skip={tf} />
-          {extra}
-          {rec.archived && <span className="chip">Archived</span>}
-          {rec._rejected && <span className="chip !text-bad">Sync error</span>}
-        </span>
-      </button>
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={selecting ? onSelect : onOpen} className="block w-full py-1 text-left">
+          <span className={cx('block truncate font-medium', done && 'text-faint line-through', rec.private && 'blur-sm hover:blur-none focus:blur-none')}>{recordTitle(def.id, rec)}</span>
+          <span className={cx('mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted empty:hidden', overdue && '[&_.chip:has(svg.lucide-calendar)]:!border-bad/40 [&_.chip:has(svg.lucide-calendar)]:!text-bad')}>
+            <Badges fields={fields} rec={rec} skip={tf} />
+            {rec.archived && <span className="chip">Archived</span>}
+            {rec._rejected && <span className="chip !text-bad">Sync error</span>}
+          </span>
+        </button>
+        {/* Module extras (status chips, links, quick actions) sit beside the row's button, never inside it. */}
+        {extra && <span className="-mt-0.5 mb-1 flex flex-wrap items-center gap-1.5 text-xs">{extra}</span>}
+      </div>
       {moneyField && rec[moneyField.k] != null && (
         <span className={cx('mt-1.5 flex-none text-sm', rec.type === 'income' && 'text-good')}>
           <FieldValue def={moneyField} value={rec[moneyField.k]} rec={rec} />
@@ -103,11 +106,13 @@ function Row({ def, fields, rec, onOpen, selecting, selected, onSelect, extra }:
 }
 
 function BoardCard({ def, fields, rec, onOpen, columns, boardField }: { def: CollectionDef; fields: FieldDef[]; rec: Rec; onOpen: () => void; columns: { value: string | number; label: string }[]; boardField: string }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: rec.id });
+  // Pointer and touch drag the whole card. The card itself is not a button (it contains buttons); keyboard and
+  // screen-reader users move cards with the "Move card" menu instead.
+  const { listeners, setNodeRef, transform, isDragging } = useDraggable({ id: rec.id });
   const p = progressOf(rec);
   return (
     <div
-      ref={setNodeRef} {...attributes} {...listeners}
+      ref={setNodeRef} {...listeners} aria-roledescription="draggable card"
       style={{ transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, zIndex: isDragging ? 30 : undefined }}
       className={cx('card card-hover cursor-grab touch-manipulation !p-3 active:cursor-grabbing', isDragging && 'shadow-2xl ring-1 ring-accent')}
     >

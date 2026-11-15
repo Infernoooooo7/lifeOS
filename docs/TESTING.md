@@ -10,6 +10,7 @@ Everything in this report was executed; nothing is listed as passing that was no
 | API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices, housekeeping, query budget | **35 passed** |
 | End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser | **33 passed** (whole e2e run: 2.2 min, was 4.1) |
 | End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **19 passed** |
+| Accessibility | axe-core (WCAG 2.1 A/AA) in Playwright | 15 main screens with data, dark and light; full 34-screen audit on desktop and phone with `scripts/dev/a11y.mjs` | **0 violations** |
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
@@ -128,6 +129,11 @@ sidebar; both tours ran with zero console errors and zero overflow, and the scre
 | Visual review (768 px) | Full sidebar took a third of a tablet screen | Icon rail below 1180 px |
 | Visual review (375 px) | Money figures truncated in three-across stat rows | Figures sized to the card (container query) |
 | Visual review (375 px) | Tab strips cut off with no cue; active tab could be hidden | Edge fade and active tab scrolled into view |
+| axe audit | Faint text 4.1:1 on dark and 3.4:1 on light (AA needs 4.5:1) | Faint colour raised to 5.9:1 (dark) and 5.2:1 (light) |
+| axe audit | Coloured status and priority chips as low as 1.8:1 in light theme | Chip text mixed toward the text colour per theme (`chip-tone`) |
+| axe audit | Light-theme accent text 3.9:1 | Light accent lightness 0.55 → 0.50 (about 5:1 for every accent hue) |
+| axe audit | Board cards and calendar month cells were buttons containing buttons | Cards are no longer buttons (the Move menu is the keyboard path); on desktop the date is the cell's button |
+| axe audit | List-row extras (links, quick actions) were nested inside the row's button | Extras render beside the row button |
 
 ## Not tested / limits of this run
 
@@ -139,7 +145,7 @@ sidebar; both tours ran with zero console errors and zero overflow, and the scre
   drive; the code paths were reviewed, the manifest and service worker are tested.
 - **Memory and long-session profiling** were not performed beyond checking that the 3D module disposes its geometry
   and stops rendering when left.
-- **Accessibility** was checked through roles, labels, focus handling and target sizes in tests, not with a screen
-  reader or an automated axe audit.
+- **Accessibility** is checked automatically with axe-core (WCAG 2.1 A/AA) and through roles, labels, focus handling
+  and target sizes in tests; it has not been tried with a real screen reader.
 - **Load testing** of the API was not performed.
 - **E-mail password reset** needs a Resend key and was not exercised end to end; the recovery-code path is tested.

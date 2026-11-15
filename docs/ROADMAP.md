@@ -46,7 +46,7 @@ The registry is designed for 500+ capabilities; these are the next steps in roug
 - More import adapters (Things, TickTick, Evernote ENEX, CSV bank formats per bank).
 - Optional AI assistance with a user-provided key: summarise a week, draft a plan, natural-language capture.
 - Native wrappers (Capacitor) for widgets, share-sheet capture and background sync.
-- Automated accessibility audits (axe) and visual regression tests in CI; Firefox and WebKit test projects.
+- Visual regression tests in CI; Firefox and WebKit test projects; screen-reader testing (axe audits already run).
 - Authorised webhooks through a server-side, allow-listed relay.
 
 **Module ideas that fit the registry without architectural change**

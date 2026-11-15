@@ -49,7 +49,7 @@ export function projectStats(project: Rec, tasks: Rec[], milestones: Rec[], now:
 
 function HealthChip({ health }: { health: Health }) {
   const h = HEALTH[health];
-  return <span className="chip" style={{ color: h.color, borderColor: `color-mix(in oklab, ${h.color} 35%, transparent)` }}><span className="size-1.5 rounded-full" style={{ background: h.color }} />{h.label}</span>;
+  return <span className="chip chip-tone" style={{ '--tone': h.color } as React.CSSProperties}><span className="size-1.5 rounded-full" style={{ background: h.color }} />{h.label}</span>;
 }
 
 async function saveAsTemplate(project: Rec, tasks: Rec[], milestones: Rec[]) {

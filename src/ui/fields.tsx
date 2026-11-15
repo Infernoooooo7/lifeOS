@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type CSSProperties } from 'react';
 import { collection as collectionDef, titleField, type FieldDef, type Opt } from '@/core/collections';
 import { getDb, type Rec } from '@/core/data/db';
 import { useById, useOptions, useRecords } from '@/core/data/hooks';
@@ -423,7 +423,7 @@ export function FieldValue({ def, value, rec, plain }: { def: FieldDef; value: u
       const o = optionOf(def, value);
       const label = o?.label ?? String(value);
       if (plain) return <>{label}</>;
-      return <span className="chip" style={o?.color ? { color: o.color, borderColor: `color-mix(in oklab, ${o.color} 35%, transparent)`, background: `color-mix(in oklab, ${o.color} 12%, transparent)` } : undefined}>{label}</span>;
+      return <span className={cx('chip', o?.color && 'chip-tone')} style={o?.color ? ({ '--tone': o.color } as CSSProperties) : undefined}>{label}</span>;
     }
     case 'date':
       return <span className={plain ? '' : 'chip'}>{!plain && <Icon name="calendar" size={12} />}{isDateOnly(value) ? relativeDay(value) : fmtDateTime(value)}</span>;

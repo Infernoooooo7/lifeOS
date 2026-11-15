@@ -35,7 +35,7 @@
   --line-strong: rgb(255 255 255 / 0.15);
   --text: #eceef4;
   --muted: #9aa2b4;
-  --faint: #6a7285;
+  --faint: #858da0;
   --good: oklch(0.8 0.15 160);
   --warn: oklch(0.83 0.14 85);
   --bad: oklch(0.72 0.18 20);
@@ -72,8 +72,8 @@
 }
 
 [data-theme='light'] {
-  --accent: oklch(0.55 0.17 var(--accent-h));
-  --accent-strong: oklch(0.48 0.18 var(--accent-h));
+  --accent: oklch(0.5 0.15 var(--accent-h));
+  --accent-strong: oklch(0.44 0.16 var(--accent-h));
   --accent-soft: oklch(0.55 0.17 var(--accent-h) / 0.11);
   --accent-ink: #ffffff;
   --violet: oklch(0.52 0.2 295);
@@ -89,7 +89,7 @@
   --line-strong: rgb(16 24 40 / 0.2);
   --text: #12151d;
   --muted: #535c6e;
-  --faint: #7d8596;
+  --faint: #5f6779;
   --good: oklch(0.52 0.14 160);
   --warn: oklch(0.6 0.14 70);
   --bad: oklch(0.55 0.2 22);
@@ -592,6 +592,16 @@
     color: var(--muted);
     white-space: nowrap;
     max-width: 100%;
+  }
+  /* A chip in an option's own colour (status, priority…), mixed toward the text colour so it stays readable (AA)
+     on either theme while keeping its hue. */
+  .chip-tone {
+    color: color-mix(in oklab, var(--tone) 70%, white);
+    border-color: color-mix(in oklab, var(--tone) 38%, transparent);
+    background: color-mix(in oklab, var(--tone) 13%, transparent);
+  }
+  [data-theme='light'] .chip-tone {
+    color: color-mix(in oklab, var(--tone) 58%, black);
   }
   .chip-accent {
     background: linear-gradient(120deg, oklch(0.78 0.14 var(--accent-h) / 0.26), oklch(0.72 0.14 var(--accent-h) / 0.1));

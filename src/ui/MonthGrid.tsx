@@ -61,12 +61,22 @@ export function MonthGrid({ month, items, weekStart = 1, onDayClick, selected, o
           const isToday = sameDay(day, today);
           return (
             <div
-              key={i} role="button" tabIndex={0} aria-label={`${day.toDateString()}, ${list.length} item${list.length === 1 ? '' : 's'}`}
+              key={i}
+              // Phones: the whole day is one button (it only shows dots). Desktop: the date is the button, so the
+              // item buttons inside the day are not nested in another control.
+              {...(mobile ? { role: 'button', tabIndex: 0, 'aria-label': `${day.toDateString()}, ${list.length} item${list.length === 1 ? '' : 's'}`, onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && select(day) } : {})}
               onClick={() => (mobile ? select(day) : onDayClick?.(day))}
-              onKeyDown={(e) => e.key === 'Enter' && (mobile ? select(day) : onDayClick?.(day))}
               className={cx('min-h-14 cursor-pointer border-b border-r border-line p-1 text-left transition-colors hover:bg-surface-2 md:min-h-24', (i + 1) % 7 === 0 && 'border-r-0', i >= 35 && 'border-b-0', !inMonth && 'bg-surface/40 text-faint', mobile && sameDay(day, sel) && 'bg-accent-soft')}
             >
-              <span className={cx('num inline-grid size-6 place-items-center rounded-full text-[0.8rem]', isToday && 'bg-accent font-semibold text-accent-ink')}>{day.getDate()}</span>
+              {mobile ? (
+                <span className={cx('num inline-grid size-6 place-items-center rounded-full text-[0.8rem]', isToday && 'bg-accent font-semibold text-accent-ink')}>{day.getDate()}</span>
+              ) : (
+                <button
+                  type="button" aria-label={`${day.toDateString()}, ${list.length} item${list.length === 1 ? '' : 's'}${onDayClick ? ' — add' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onDayClick?.(day); }}
+                  className={cx('num inline-grid size-6 place-items-center rounded-full text-[0.8rem] hover:bg-surface-3', isToday && 'bg-accent font-semibold text-accent-ink hover:bg-accent')}
+                >{day.getDate()}</button>
+              )}
               {mobile ? (
                 <div className="mt-0.5 flex flex-wrap gap-0.5 px-0.5">
                   {list.slice(0, 4).map((it) => <span key={it.id} className="size-1.5 rounded-full" style={{ background: it.color ?? 'var(--accent)' }} />)}
@@ -83,7 +93,7 @@ export function MonthGrid({ month, items, weekStart = 1, onDayClick, selected, o
                       className={cx('block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[0.74rem] hover:brightness-125', it.done && 'line-through opacity-60')}
                       style={{ background: `color-mix(in oklab, ${it.color ?? 'var(--accent)'} 20%, transparent)`, color: 'var(--text)' }}
                     >
-                      {it.time && <span className="mr-1 text-faint">{it.time}</span>}
+                      {it.time && <span className="mr-1 text-muted">{it.time}</span>}
                       {it.title}
                     </button>
                   ))}
