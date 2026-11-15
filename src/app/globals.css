@@ -273,24 +273,141 @@
   }
   /* The animated sky is a fixed canvas under everything; page roots turn transparent to show it. Full-screen
      overlays that also use .app-canvas (focus mode, onboarding) keep their own opaque static sky. */
-  .cosmos-canvas {
+  .cosmos-sky {
     position: fixed;
     top: 0;
     left: 0;
     z-index: -1;
     width: 100%;
-    /* The large viewport height: a phone's address bar sliding in and out never resizes (and so never clears) it. */
+    /* The large viewport height: a phone's address bar sliding in and out never resizes it. */
     height: 100vh;
     height: 100lvh;
-    display: none;
+    overflow: hidden;
     pointer-events: none;
-    /* Its own compositor layer, pinned to the viewport while the page scrolls (otherwise a frame can show it shifted
-       with the content, uncovering the page background). */
-    transform: translateZ(0);
-    will-change: transform;
     contain: strict;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 1.4s ease, visibility 0s 1.4s;
   }
-  /* Under the canvas, the root carries the static sky: should a frame ever show a gap, it shows sky, not black. */
+  .cosmos .cosmos-sky {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 1.4s ease;
+  }
+  /* Every moving part is a transform or opacity animation on its own layer: the compositor runs them, so the sky keeps
+     moving smoothly while the page scrolls or the main thread is busy. */
+  .sky-par {
+    position: absolute;
+    inset: 0;
+    transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+    will-change: transform;
+  }
+  .sky-drift {
+    position: absolute;
+    inset: -7%;
+    animation: sky-drift 150s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  .sky-neb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 7s ease-in-out;
+    will-change: opacity;
+  }
+  .sky-stars {
+    position: absolute;
+    will-change: transform, opacity;
+  }
+  .sky-stars-far {
+    inset: -3%;
+    width: 106%;
+    height: 106%;
+    animation: sky-pan-far 260s linear infinite alternate;
+  }
+  .sky-stars-near {
+    inset: -4%;
+    width: 108%;
+    height: 108%;
+    animation: sky-pan-near 170s linear infinite alternate, sky-shimmer 4.7s ease-in-out infinite alternate;
+  }
+  .sky-sparks {
+    position: absolute;
+    inset: 0;
+    animation: sky-pan-near 170s linear infinite alternate;
+  }
+  .sky-spark {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 7%, var(--c) 16%, color-mix(in oklab, var(--c) 28%, transparent) 30%, transparent 62%);
+    animation: sky-twinkle var(--d) ease-in-out var(--dl) infinite alternate;
+    will-change: opacity, transform;
+  }
+  .sky-spark.spike {
+    border-radius: 0;
+    background:
+      radial-gradient(circle, #fff 0 6%, var(--c) 14%, color-mix(in oklab, var(--c) 25%, transparent) 26%, transparent 50%),
+      linear-gradient(90deg, transparent, color-mix(in oklab, var(--c) 75%, transparent), transparent) center / 100% 1.4px no-repeat,
+      linear-gradient(0deg, transparent, color-mix(in oklab, var(--c) 75%, transparent), transparent) center / 1.4px 100% no-repeat;
+  }
+  .sky-meteors {
+    position: absolute;
+    inset: 0;
+  }
+  .sky-meteor-track {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+  .sky-meteor {
+    position: absolute;
+    right: 0;
+    top: -1px;
+    width: 230px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgb(150 190 255 / 0.25) 45%, rgb(236 245 255 / 0.95));
+    box-shadow: 0 0 8px 1px rgb(170 205 255 / 0.35);
+    transform-origin: right center;
+    opacity: 0;
+    animation: sky-meteor 1.25s cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
+  }
+  @keyframes sky-drift {
+    from { transform: translate3d(-1.6%, -1.1%, 0) scale(1.01) rotate(-0.8deg); }
+    to { transform: translate3d(1.6%, 1.1%, 0) scale(1.07) rotate(0.8deg); }
+  }
+  @keyframes sky-pan-far {
+    to { transform: translate3d(-2.5%, -1.2%, 0); }
+  }
+  @keyframes sky-pan-near {
+    to { transform: translate3d(-3.4%, -1.6%, 0); }
+  }
+  @keyframes sky-shimmer {
+    from { opacity: 0.78; }
+    to { opacity: 1; }
+  }
+  @keyframes sky-twinkle {
+    from { opacity: 0.18; transform: scale(0.55) rotate(-8deg); }
+    to { opacity: 1; transform: scale(1) rotate(6deg); }
+  }
+  @keyframes sky-meteor {
+    0% { opacity: 0; transform: translate3d(0, 0, 0) scaleX(0.15); }
+    12% { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(48vmax, 0, 0) scaleX(1); }
+  }
+  /* Reduced motion (system or app setting) and software rendering: the same sky, standing still. */
+  .cosmos-still .cosmos-sky,
+  .cosmos-still .cosmos-sky * {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* The landing page's 3D hero is on screen: one moving scene at a time. */
+  html[data-hero='on'] .cosmos-sky * {
+    animation-play-state: paused !important;
+  }
+  /* Under the sky layers, the root carries the static sky: while they fade in (or if one ever leaves a gap) it shows sky, not black. */
   html.cosmos {
     background:
       radial-gradient(70% 55% at 22% 8%, oklch(0.3 0.12 278 / 0.7), transparent 72%),
@@ -301,9 +418,6 @@
   }
   html.cosmos[data-theme='light'] {
     background: var(--bg);
-  }
-  .cosmos .cosmos-canvas {
-    display: block;
   }
   .cosmos .app-canvas:not(.fixed) {
     background: transparent;

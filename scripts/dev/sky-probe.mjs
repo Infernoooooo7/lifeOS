@@ -1,6 +1,6 @@
 // Sky probe: forces the animated sky on (even on software WebGL, i.e. a slow GPU), hides the page content, and saves a
-// screenshot every ~200 ms while resizing the viewport like a phone's address bar. Prints the quality level the sky
-// settled on and how often the canvas was resized; check the frames for black ones (see docs/ARCHITECTURE.md).
+// screenshot every ~200 ms while resizing the viewport like a phone's address bar. Prints how often the canvases were
+// repainted; check the frames for black ones (see docs/ARCHITECTURE.md).
 // Usage: node scripts/dev/sky-probe.mjs <out-dir>   [VP=2560x1440] [THROTTLE=6]   (a server on :3100)
 import { chromium } from 'playwright';
 const out = process.argv[2];
@@ -20,7 +20,8 @@ await p.addStyleTag({ content: '.app-canvas:not(.fixed) > *, [role=status], .toa
 await p.waitForFunction(() => document.documentElement.classList.contains('cosmos'), null, { timeout: 20000 });
 await p.evaluate(() => {
   window.__resizes = 0;
-  new MutationObserver(() => window.__resizes++).observe(document.querySelector('canvas.cosmos-canvas'), { attributes: true, attributeFilter: ['width', 'height'] });
+  window.__resizes = 0; // star canvases are repainted (resized) only when the layer outgrows them
+  for (const c of document.querySelectorAll('.cosmos-sky canvas')) new MutationObserver(() => window.__resizes++).observe(c, { attributes: true, attributeFilter: ['width', 'height'] });
 });
 if (process.env.THROTTLE) { const cdp = await p.context().newCDPSession(p); await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) }); }
 await p.waitForTimeout(1000);
@@ -31,6 +32,5 @@ for (let i = 0; i < 60; i++) {
   await p.screenshot({ path: `${out}/f${String(i).padStart(2, '0')}.png` });
   await p.waitForTimeout(150);
 }
-const lv = []; for (let k = 0; k < 6; k++) { lv.push(await p.locator('canvas.cosmos-canvas').getAttribute('data-level')); await p.waitForTimeout(1500); }
-console.log('levels after', lv.join(','), 'canvas resizes', await p.evaluate(() => window.__resizes), 'seconds', ((Date.now() - t0) / 1000).toFixed(1), 'level', await p.locator('canvas.cosmos-canvas').getAttribute('data-level'));
+console.log('canvas repaints', await p.evaluate(() => window.__resizes), 'seconds', ((Date.now() - t0) / 1000).toFixed(1), 'still', await p.evaluate(() => document.documentElement.classList.contains('cosmos-still')));
 await b.close();

@@ -3,17 +3,18 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * The animated sky behind the whole app: a slowly evolving nebula along a Milky Way band, three parallax layers of
- * twinkling stars (the brightest with diffraction spikes) and the occasional shooting star. Raw WebGL 2 in two passes
- * so it stays cheap:
- *   1. the nebula (domain-warped fbm, the expensive part) renders into small keyframe textures at ~⅓ resolution,
- *      1.2 s of sky time apart; the screen crossfades between two while the next is drawn one strip per frame, so
- *      every frame costs about the same;
- *   2. a screen pass upsamples it and adds the stars and meteors.
- * Stars are baked once into a repeating texture; each frame samples it three times. Capped at 24 fps, held still
- * while the page scrolls, paused in hidden tabs, one still frame under prefers-reduced-motion, and switched off with
- * "Animated background" in Settings → Appearance. Software renderers get one still frame. Without WebGL 2 the static CSS
- * sky stays in place.
+ * The animated sky behind the whole app: a nebula along a Milky Way band, two depths of stars, a few bright stars
+ * that twinkle with diffraction spikes, and the occasional shooting star.
+ *
+ * Built so that scrolling never makes it stutter or stop:
+ *   - Nothing is drawn per frame. The nebula is painted by WebGL into a canvas now and then (at start, then about
+ *     every 28 s, in strips spread over several frames) and crossfades into the new state; the stars are painted once
+ *     with canvas 2D at full device resolution, so they stay crisp.
+ *   - All motion is CSS transform and opacity animation on a handful of layers (nebula drift, star pan, shimmer,
+ *     twinkles, meteors). The browser runs those on its compositor thread, so they keep moving smoothly while the
+ *     page scrolls or the main thread is busy.
+ * Reduced motion (system or app setting) and software renderers get the same sky without motion. "Animated
+ * background" in Settings → Appearance switches it off for this device; without WebGL 2 the static CSS sky remains.
  */
 
 export const COSMOS_KEY = 'lifeos.cosmos';
@@ -46,7 +47,7 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0, a = 0.5;
   mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
+  for (int i = 0; i < 4; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
   return v;
 }
 void main() {
@@ -74,6 +75,7 @@ void main() {
   col *= 0.42 + 0.72 * band;
   col += vec3(0.5, 0.55, 0.85) * pow(band, 6.0) * smoothstep(0.45, 0.8, f) * 0.06; // faint galactic glow
 
+  col *= 1.45; // shown as is (no star pass adds light on top any more)
   if (uLight > 0.5) {
     // Daylight: the same clouds as soft pastel tints on a pale sky.
     vec3 sky = vec3(0.935, 0.94, 0.975);
@@ -81,86 +83,6 @@ void main() {
     vec3 tint = col / max(max(col.r, max(col.g, col.b)), 1e-3);
     col = mix(sky, sky * (0.55 + 0.45 * tint), m * 0.55);
   }
-  o = vec4(col, 1.0);
-}`;
-
-/** Baked once at start-up: a repeating 512² tile of stars. RGB is the star, alpha its twinkle phase. */
-const STARS = `#version 300 es
-precision highp float;
-out vec4 o;
-float h21(vec2 p) { p = fract(p * vec2(233.34, 851.73)); p += dot(p, p + 23.45); return fract(p.x * p.y); }
-void main() {
-  vec2 px = gl_FragCoord.xy;
-  vec3 col = vec3(0.0);
-  float phase = 0.0;
-  // Check this cell and its neighbours so large stars and spikes are never cut off at a cell edge.
-  const float cell = 32.0;
-  vec2 base = floor(px / cell);
-  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-    vec2 id = mod(base + vec2(i, j), 512.0 / cell); // wraps, so the tile repeats seamlessly
-    float h = h21(id);
-    if (h > 0.5) continue;
-    vec2 centre = (base + vec2(i, j) + 0.5 + (vec2(h21(id + 3.1), h21(id + 7.7)) - 0.5) * 0.8) * cell;
-    vec2 d = px - centre;
-    float size = 0.5 + pow(h21(id + 1.3), 7.0) * 2.6;
-    float core = exp(-dot(d, d) / (size * size));
-    float sp = 0.0;
-    if (h21(id + 2.2) > 0.96) {
-      vec2 a = abs(d);
-      sp = (exp(-a.x / (size * 0.3)) * exp(-a.y / (size * 5.5)) + exp(-a.y / (size * 0.3)) * exp(-a.x / (size * 5.5))) * 0.5;
-    }
-    float k = h21(id + 5.5);
-    vec3 tint = k < 0.33 ? vec3(0.72, 0.84, 1.0) : k < 0.66 ? vec3(1.0, 0.94, 0.86) : vec3(0.86, 0.78, 1.0);
-    float v = core + sp;
-    if (v > 0.002) { col += tint * v; phase = h; }
-  }
-  o = vec4(min(col, vec3(1.0)), phase * 2.0);
-}`;
-
-const COMPOSITE = `#version 300 es
-precision highp float;
-uniform sampler2D uNebulaA;
-uniform sampler2D uNebulaB;
-uniform float uMix;
-uniform sampler2D uStars;
-uniform vec2 uRes;
-uniform float uDpr;
-uniform float uTime;
-uniform vec2 uParallax;
-uniform float uLight;
-uniform vec4 uMeteor; // head x, head y (CSS px), progress, on
-uniform vec2 uMeteorDir;
-out vec4 o;
-float h21(vec2 p) { p = fract(p * vec2(233.34, 851.73)); p += dot(p, p + 23.45); return fract(p.x * p.y); }
-vec3 layer(vec2 px, float scale, vec2 shift, float speed) {
-  vec4 s = texture(uStars, (px * scale + shift) / 512.0);
-  float tw = 0.55 + 0.45 * sin(uTime * (0.8 + s.a * 2.2) * speed + s.a * 90.0);
-  return s.rgb * tw;
-}
-void main() {
-  vec2 uv = gl_FragCoord.xy / uRes;
-  vec3 col = mix(texture(uNebulaA, uv).rgb, texture(uNebulaB, uv).rgb, uMix);
-  vec2 px = gl_FragCoord.xy / uDpr; // CSS pixels, so stars look the same on every screen
-  vec3 s = layer(px, 1.7, uParallax * 6.0 + vec2(uTime * 0.6, 37.0), 1.0) * 0.55;
-  s += layer(px, 1.0, uParallax * 14.0 + vec2(uTime * 1.3 + 300.0, uTime * 0.2 + 500.0), 1.3);
-  s += layer(px, 0.55, uParallax * 28.0 + vec2(uTime * 2.4 + 640.0, uTime * 0.5 + 210.0), 0.8) * 1.15;
-  float m = 0.0;
-  if (uMeteor.w > 0.5) {
-    vec2 rel = px - uMeteor.xy;
-    float along = dot(rel, -uMeteorDir);
-    float across = abs(dot(rel, vec2(-uMeteorDir.y, uMeteorDir.x)));
-    float tail = uRes.y / uDpr * 0.16;
-    m = step(0.0, along) * (1.0 - smoothstep(0.0, tail, along)) * exp(-across * across / 1.1);
-    m += exp(-dot(rel, rel) / 5.0) * 1.5;
-    m *= sin(uMeteor.z * 3.14159);
-  }
-  if (uLight > 0.5) {
-    col -= (s * 0.06 + m * 0.08) * vec3(0.5, 0.45, 0.2);
-  } else {
-    col += s * (0.75 + 0.5 * dot(col, vec3(1.0)));
-    col += vec3(0.75, 0.88, 1.0) * m;
-  }
-  col += (h21(gl_FragCoord.xy + fract(uTime)) - 0.5) / 255.0; // dither: no banding in the dark gradients
   o = vec4(col, 1.0);
 }`;
 
@@ -200,367 +122,319 @@ function accentRgb(): [number, number, number] {
   }
 }
 
-/** Sets the sky up on a canvas and runs it; returns the teardown, or nothing when it cannot run here. */
-function mount(el: HTMLCanvasElement): (() => void) | undefined {
-  if (window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
-  const gl = el.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power', preserveDrawingBuffer: false });
-  if (!gl) return;
-  // Asking whether a shader compiled makes the page wait for the GPU. With parallel compilation we poll until the
-  // driver is done instead, so the sky never blocks typing, scrolling or a toast.
-  const progs = [build(gl, VERT, NEBULA), build(gl, VERT, COMPOSITE), build(gl, VERT, STARS)] as const;
-  const parallel = gl.getExtension('KHR_parallel_shader_compile');
-  let stop: (() => void) | undefined;
-  let timer = 0;
-  let cancelled = false;
-  const wait = () => {
-    if (cancelled) return;
-    if (parallel && !progs.every((p) => gl.getProgramParameter(p, parallel.COMPLETION_STATUS_KHR))) {
-      timer = window.setTimeout(wait, 60);
-      return;
-    }
-    if (progs.every((p) => linked(gl, p))) stop = run(el, gl, ...progs);
-  };
-  wait();
+/** Small deterministic random generator, so the sky looks the same from one visit to the next. */
+function seeded(seed: number) {
+  let a = seed | 0;
   return () => {
-    cancelled = true;
-    window.clearTimeout(timer);
-    if (stop) stop();
-    else gl.getExtension('WEBGL_lose_context')?.loseContext();
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-/** How much the sky may do: 0 = full, 1 = 12 fps at lower resolution, 2 = one still frame. Kept for the browser session. */
-const LEVEL_KEY = 'lifeos.cosmos.level';
-const readLevel = () => {
-  try {
-    return Math.min(2, Number(sessionStorage.getItem(LEVEL_KEY)) || 0);
-  } catch {
-    return 0;
+/** Paint a star field at full device resolution. Sizing the canvas clears it; it is repainted in the same task. */
+function paintStars(canvas: HTMLCanvasElement, light: boolean, perPx: number, sizeMul: number, seed: number) {
+  const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+  if (!cssW || !cssH) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const g = canvas.getContext('2d');
+  if (!g) return;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rnd = seeded(seed);
+  const tints = light ? ['#4a5287', '#6a5a9c', '#4d6d98'] : ['#ffffff', '#dbe7ff', '#fff2df', '#e6dbff'];
+  const count = Math.round((cssW * cssH) / perPx);
+  for (let i = 0; i < count; i++) {
+    const x = rnd() * cssW, y = rnd() * cssH;
+    const r = (0.3 + Math.pow(rnd(), 7) * 1.5) * sizeMul;
+    const alpha = (light ? 0.18 : 0.35) + rnd() * (light ? 0.2 : 0.6);
+    const tint = tints[Math.floor(rnd() * tints.length)];
+    if (r > 0.9 && !light) {
+      const glow = g.createRadialGradient(x, y, 0, x, y, r * 4.5);
+      glow.addColorStop(0, `${tint}55`);
+      glow.addColorStop(1, `${tint}00`);
+      g.fillStyle = glow;
+      g.globalAlpha = alpha;
+      g.fillRect(x - r * 4.5, y - r * 4.5, r * 9, r * 9);
+    }
+    g.globalAlpha = alpha;
+    g.fillStyle = tint;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
   }
-};
-const saveLevel = (n: number) => {
-  try {
-    sessionStorage.setItem(LEVEL_KEY, String(n));
-  } catch {
-    /* private mode: the level applies until reload */
+  g.globalAlpha = 1;
+}
+
+/** WebGL nebula painter: compiles once, then paints frames on request, a strip at a time. */
+function nebulaPainter() {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  if (!gl) return null;
+  const prog = build(gl, VERT, NEBULA);
+  const parallel = gl.getExtension('KHR_parallel_shader_compile');
+  const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+  let ready: Promise<boolean> | null = null;
+  let software = false;
+  let u: Record<string, WebGLUniformLocation | null> = {};
+  const whenReady = () =>
+    (ready ??= (async () => {
+      // Poll instead of asking: asking whether a shader compiled makes the page wait for the GPU.
+      while (parallel && !gl.getProgramParameter(prog, parallel.COMPLETION_STATUS_KHR)) await new Promise((r) => setTimeout(r, 50));
+      if (!linked(gl, prog)) return false;
+      u = Object.fromEntries(['uRes', 'uTime', 'uLight', 'uAccent'].map((n) => [n, gl.getUniformLocation(prog, n)]));
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)));
+      const quad = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      return true;
+    })());
+  return {
+    whenReady,
+    isSoftware: () => software,
+    /** Paint the nebula at sky time `t` into `target` (a 2D canvas), in strips over a few frames. */
+    async paint(target: HTMLCanvasElement, w: number, h: number, t: number, light: boolean, accent: [number, number, number], cancelled: () => boolean) {
+      if (!(await whenReady())) return false;
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(prog);
+      gl.uniform2f(u.uRes, w, h);
+      gl.uniform1f(u.uTime, t);
+      gl.uniform1f(u.uLight, light ? 1 : 0);
+      gl.uniform3f(u.uAccent, ...accent);
+      gl.enable(gl.SCISSOR_TEST);
+      const strips = 8;
+      for (let i = 0; i < strips; i++) {
+        if (cancelled()) return false;
+        const y0 = Math.floor((i / strips) * h), y1 = Math.floor(((i + 1) / strips) * h);
+        gl.scissor(0, y0, w, y1 - y0);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        await nextFrame();
+      }
+      gl.disable(gl.SCISSOR_TEST);
+      if (cancelled()) return false;
+      target.width = w;
+      target.height = h;
+      target.getContext('2d')?.drawImage(canvas, 0, 0);
+      return true;
+    },
+    dispose: () => gl.getExtension('WEBGL_lose_context')?.loseContext(),
+  };
+}
+
+/** Bright stars that twinkle on their own (tiny composited sprites), some with diffraction spikes. */
+function sparkles(host: HTMLElement, light: boolean) {
+  host.replaceChildren();
+  if (light) return;
+  const rnd = seeded(7);
+  const colors = ['#ffffff', '#cfe0ff', '#ffe9cf', '#e2d4ff'];
+  for (let i = 0; i < 18; i++) {
+    const s = document.createElement('span');
+    s.className = rnd() < 0.4 ? 'sky-spark spike' : 'sky-spark';
+    const size = 9 + Math.pow(rnd(), 2) * 22;
+    s.style.cssText = `left:${(rnd() * 100).toFixed(2)}%;top:${(rnd() * 100).toFixed(2)}%;width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;--c:${colors[Math.floor(rnd() * colors.length)]};--d:${(2.2 + rnd() * 3.6).toFixed(2)}s;--dl:${(-rnd() * 6).toFixed(2)}s`;
+    host.appendChild(s);
   }
-};
+}
 
-/** Seconds of sky time between two nebula keyframes; the screen crossfades between them. */
-const KEY_STEP = 1.2;
-/** Each new keyframe is drawn in this many horizontal strips, one per frame, so no frame does all the work. */
-const STRIPS = 12;
-
-/** Runs the sky once its programs are ready; returns the teardown. */
-function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebGLProgram, compProg: WebGLProgram, starProg: WebGLProgram): () => void {
-  const root = document.documentElement;
-
-  const quad = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); // one oversized triangle
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-  // Every synchronous query comes before any GPU work is queued: a query issued behind queued work makes the page
-  // wait for that work to finish.
-  const U = (p: WebGLProgram, n: string) => gl.getUniformLocation(p, n);
-  const nu = { res: U(nebulaProg, 'uRes'), time: U(nebulaProg, 'uTime'), light: U(nebulaProg, 'uLight'), accent: U(nebulaProg, 'uAccent') };
-  const cu = { a: U(compProg, 'uNebulaA'), b: U(compProg, 'uNebulaB'), mix: U(compProg, 'uMix'), stars: U(compProg, 'uStars'), res: U(compProg, 'uRes'), dpr: U(compProg, 'uDpr'), time: U(compProg, 'uTime'), par: U(compProg, 'uParallax'), light: U(compProg, 'uLight'), meteor: U(compProg, 'uMeteor'), meteorDir: U(compProg, 'uMeteorDir') };
-  // A software renderer (no GPU acceleration) would spend the CPU on the sky every frame: draw it once instead.
-  const info = gl.getExtension('WEBGL_debug_renderer_info');
-  const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-  // ('force' is a developer override that animates anyway — the way to test the sky on a slow GPU.)
-  let forced = false;
-  try {
-    forced = localStorage.getItem(COSMOS_KEY) === 'force';
-  } catch {
-    /* storage unavailable */
-  }
-  const software = !forced && /swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer);
-  const rnd = (k: number, s: number) => {
-    const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453;
-    return x - Math.floor(x);
-  };
-
-  // Star tile, baked once.
-  const starTex = gl.createTexture();
-  const fbo = gl.createFramebuffer();
-  gl.bindTexture(gl.TEXTURE_2D, starTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, starTex, 0);
-  gl.viewport(0, 0, 512, 512);
-  gl.useProgram(starProg);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.bindTexture(gl.TEXTURE_2D, starTex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.generateMipmap(gl.TEXTURE_2D);
-
-  // Three nebula keyframes: the screen shows a crossfade from `from` to `to` while `next` is drawn strip by strip.
-  let [from, to, next] = [gl.createTexture()!, gl.createTexture()!, gl.createTexture()!];
-  let toTime = 0; // sky time of the `to` keyframe; `from` is one step earlier, `next` one step later
-  let strip = 0; // strips of `next` drawn so far
-
-  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const coarse = window.matchMedia('(pointer: coarse)').matches;
-  let level = readLevel();
-  const holdStill = () => software || level >= 2 || media.matches || root.dataset.motion === 'reduced' || root.dataset.hero === 'on';
-  let cssW = 0, cssH = 0, dpr = 1, w = 0, h = 0, nw = 0, nh = 0;
-  let light = root.dataset.theme === 'light' ? 1 : 0;
-  let accent = accentRgb();
-  let raf = 0, last = 0, time = 40 + Math.random() * 400, scrolledAt = 0, prevTick = 0;
-  const par = { x: 0, y: 0, tx: 0, ty: 0 };
-  let enabled = cosmosEnabled();
-  const intervals: number[] = [];
-  let judgedAt = 0;
-
-  const nebula = (target: WebGLTexture, at: number, from = 0, rows = nh) => {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
-    gl.viewport(0, 0, nw, nh);
-    gl.enable(gl.SCISSOR_TEST);
-    gl.scissor(0, from, nw, rows);
-    gl.useProgram(nebulaProg);
-    gl.uniform2f(nu.res, nw, nh);
-    gl.uniform1f(nu.time, at);
-    gl.uniform1f(nu.light, light);
-    gl.uniform3f(nu.accent, ...accent);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.disable(gl.SCISSOR_TEST);
-  };
-
-  /** Redraw both visible keyframes from scratch (start, resize, theme or accent change). */
-  const rebuild = () => {
-    toTime = time + KEY_STEP;
-    nebula(from, time);
-    nebula(to, toTime);
-    strip = 0;
-  };
-
-  /** Size the drawing buffer; returns true when it changed (which clears the canvas, so the caller redraws at once). */
-  const size = (): boolean => {
-    const r = el.getBoundingClientRect();
-    const cw = Math.max(1, Math.round(r.width));
-    const ch = Math.max(1, Math.round(r.height));
-    // Sharp on phones (up to 2× when the pixel budget allows), capped on very large monitors.
-    const budget = (coarse ? 1.0e6 : 2.2e6) / (level >= 1 ? 2 : 1);
-    const want = Math.max(0.5, Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(budget / (cw * ch))));
-    if (cw === cssW && ch === cssH && Math.abs(want - dpr) < 0.01 && w) return false;
-    cssW = cw;
-    cssH = ch;
-    dpr = want;
-    w = Math.round(cw * dpr);
-    h = Math.round(ch * dpr);
-    el.width = w;
-    el.height = h;
-    nw = Math.max(64, Math.round(cw * 0.34));
-    nh = Math.max(64, Math.round(ch * 0.34));
-    for (const t of [from, to, next]) {
-      gl.bindTexture(gl.TEXTURE_2D, t);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, nw, nh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    }
-    rebuild();
-    return true;
-  };
-
-  const composite = () => {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, w, h);
-    gl.useProgram(compProg);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, from);
-    gl.uniform1i(cu.a, 0);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, to);
-    gl.uniform1i(cu.b, 1);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, starTex);
-    gl.uniform1i(cu.stars, 2);
-    gl.uniform1f(cu.mix, Math.min(1, Math.max(0, 1 - (toTime - time) / KEY_STEP)));
-    // A shooting star every few periods; its maths only runs in the shader while one is flying.
-    const period = 7.5;
-    const k = Math.floor(time / period);
-    const lt = time - k * period;
-    if (rnd(k, 4.2) >= 0.4 && lt < 1.1 && !holdStill()) {
-      const dx = -0.75 - rnd(k, 3) * 0.5, dy = -0.42;
-      const len = Math.hypot(dx, dy);
-      const prog = lt / 1.1;
-      const sx = (0.25 + rnd(k, 1) * 0.9) * cssW, sy = (0.55 + rnd(k, 2) * 0.4) * cssH;
-      gl.uniform4f(cu.meteor, sx + (dx / len) * prog * cssH * 0.75, sy + (dy / len) * prog * cssH * 0.75, prog, 1);
-      gl.uniform2f(cu.meteorDir, dx / len, dy / len);
-    } else gl.uniform4f(cu.meteor, 0, 0, 0, 0);
-    gl.uniform2f(cu.res, w, h);
-    gl.uniform1f(cu.dpr, dpr);
-    gl.uniform1f(cu.time, time);
-    gl.uniform2f(cu.par, par.x, par.y);
-    gl.uniform1f(cu.light, light);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-  };
-
-  /** One animation step: advance the keyframes by a strip, roll them over when due, and draw the screen. */
-  const step = () => {
-    if (time >= toTime) {
-      // Due: finish any strips a slow frame left undrawn, then roll the keyframes forward.
-      if (strip < STRIPS) nebula(next, toTime + KEY_STEP, Math.floor((strip / STRIPS) * nh), nh);
-      [from, to, next] = [to, next, from];
-      toTime += KEY_STEP;
-      strip = 0;
-      if (time >= toTime) rebuild(); // fell far behind (e.g. a long pause): start over from now
-    } else if (strip < STRIPS) {
-      const y0 = Math.floor((strip / STRIPS) * nh);
-      const y1 = Math.floor(((strip + 1) / STRIPS) * nh);
-      nebula(next, toTime + KEY_STEP, y0, y1 - y0);
-      strip++;
-    }
-    composite();
-  };
-
-  /** If the whole page keeps running slowly while the sky animates, step down once and stay there. */
-  const judge = (now: number) => {
-    if (now - judgedAt < 2500 || intervals.length < 30) return;
-    judgedAt = now;
-    const sorted = [...intervals].sort((a, b) => a - b);
-    intervals.length = 0;
-    if (sorted[Math.floor(sorted.length / 2)] <= 28) return; // page at ~36 fps or better: fine
-    level = Math.min(2, level + 1);
-    saveLevel(level);
-    el.dataset.level = String(level);
-    if (size()) composite(); // level 1 also halves the pixel budget; redraw at once, never leave a cleared canvas
-    if (level >= 2) start();
-  };
-
-  const loop = (now: number) => {
-    raf = requestAnimationFrame(loop);
-    const gap = now - prevTick;
-    prevTick = now;
-    if (gap > 0 && gap < 250) {
-      intervals.push(gap);
-      if (intervals.length > 120) intervals.shift();
-    }
-    const dt = now - last;
-    if (dt < (level >= 1 ? 80 : 40)) return; // 24 fps, or 12 when stepped down: plenty for a drifting sky
-    if (now - scrolledAt < 250) {
-      last = now; // hold still while the page scrolls: scrolling gets the whole frame budget
-      intervals.length = 0;
-      return;
-    }
-    last = now;
-    time += Math.min(dt, 100) / 1000;
-    par.x += (par.tx - par.x) * 0.05;
-    par.y += (par.ty - par.y) * 0.05;
-    step();
-    judge(now);
-  };
-
-  const start = () => {
-    cancelAnimationFrame(raf);
-    if (!enabled) {
-      root.classList.remove('cosmos');
-      return;
-    }
-    root.classList.add('cosmos');
-    if (size()) composite();
-    if (holdStill()) composite();
-    else if (!document.hidden) {
-      last = prevTick = performance.now();
-      intervals.length = 0;
-      raf = requestAnimationFrame(loop);
-    }
-  };
-
-  const onPointer = (e: PointerEvent) => {
-    par.tx = (e.clientX / window.innerWidth - 0.5) * 2;
-    par.ty = (e.clientY / window.innerHeight - 0.5) * -2;
-  };
-  const onScroll = () => void (scrolledAt = performance.now());
-  let resizeTimer = 0;
-  const onResize = () => {
-    window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => {
-      if (enabled && size()) composite(); // redrawn in the same task: the cleared canvas is never shown
-    }, 120);
-  };
-  const onToggle = () => {
-    enabled = cosmosEnabled();
-    if (enabled) {
-      level = 0; // switched back on by hand: give it a fresh chance
-      saveLevel(0);
-    }
-    start();
-  };
-  const themeWatch = new MutationObserver(() => {
-    const nextLight = root.dataset.theme === 'light' ? 1 : 0;
-    const nextAccent = accentRgb();
-    if (nextLight === light && nextAccent.every((v, i) => Math.abs(v - accent[i]) < 1e-3)) return;
-    light = nextLight;
-    accent = nextAccent;
-    if (!w) return;
-    rebuild();
-    composite();
-  });
-  themeWatch.observe(root, { attributes: true, attributeFilter: ['data-theme', 'style'] });
-  const modeWatch = new MutationObserver(start);
-  modeWatch.observe(root, { attributes: true, attributeFilter: ['data-motion', 'data-hero'] });
-  const onLost = (e: Event) => {
-    e.preventDefault();
-    cancelAnimationFrame(raf);
-    root.classList.remove('cosmos');
-  };
-
-  el.dataset.level = String(level); // visible to tests and to anyone inspecting the page
-  start();
-  window.addEventListener('resize', onResize);
-  window.addEventListener('pointermove', onPointer, { passive: true });
-  window.addEventListener('scroll', onScroll, { passive: true, capture: true }); // capture: the app scrolls inner panes
-  window.addEventListener('wheel', onScroll, { passive: true });
-  window.addEventListener('touchmove', onScroll, { passive: true });
-  document.addEventListener('visibilitychange', start);
-  window.addEventListener(COSMOS_EVENT, onToggle);
-  media.addEventListener('change', start);
-  el.addEventListener('webglcontextlost', onLost);
-  return () => {
-    cancelAnimationFrame(raf);
-    window.clearTimeout(resizeTimer);
-    themeWatch.disconnect();
-    modeWatch.disconnect();
-    window.removeEventListener('resize', onResize);
-    window.removeEventListener('pointermove', onPointer);
-    window.removeEventListener('scroll', onScroll, { capture: true });
-    window.removeEventListener('wheel', onScroll);
-    window.removeEventListener('touchmove', onScroll);
-    document.removeEventListener('visibilitychange', start);
-    window.removeEventListener(COSMOS_EVENT, onToggle);
-    media.removeEventListener('change', start);
-    el.removeEventListener('webglcontextlost', onLost);
-    root.classList.remove('cosmos');
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-  };
+/** Launch one shooting star (a CSS-animated streak), somewhere in the upper sky. */
+function meteor(host: HTMLElement) {
+  const track = document.createElement('div');
+  track.className = 'sky-meteor-track';
+  track.style.cssText = `left:${(30 + Math.random() * 70).toFixed(1)}%;top:${(Math.random() * 42).toFixed(1)}%;transform:rotate(${(146 + Math.random() * 16).toFixed(1)}deg)`;
+  const streak = document.createElement('div');
+  streak.className = 'sky-meteor';
+  track.appendChild(streak);
+  host.appendChild(track);
+  streak.addEventListener('animationend', () => track.remove(), { once: true });
+  setTimeout(() => track.remove(), 4000); // in case the animation never runs (hidden tab)
 }
 
 export function Cosmos() {
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const sky = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const el = canvas.current;
-    if (!el) return;
+    const el = sky.current;
+    if (!el || window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
+    const root = document.documentElement;
+    const [nebA, nebB] = [...el.querySelectorAll<HTMLCanvasElement>('.sky-neb')];
+    const far = el.querySelector<HTMLCanvasElement>('.sky-stars-far')!;
+    const near = el.querySelector<HTMLCanvasElement>('.sky-stars-near')!;
+    const sparks = el.querySelector<HTMLElement>('.sky-sparks')!;
+    const meteors = el.querySelector<HTMLElement>('.sky-meteors')!;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let painter: ReturnType<typeof nebulaPainter> = null;
+    let disposed = false;
+    let front = nebA;
+    let skyTime = 40 + Math.random() * 400;
+    let paintId = 0; // a newer paint cancels an older one
+    let evolveTimer = 0, meteorTimer = 0, resizeTimer = 0, startTimer = 0, parFrame = 0;
+    let painted = { w: 0, h: 0 };
+    let light = root.dataset.theme === 'light';
+    let accent = accentRgb();
+    let forced = false;
+    try {
+      forced = localStorage.getItem(COSMOS_KEY) === 'force';
+    } catch {
+      /* storage unavailable */
+    }
+    const still = () => media.matches || root.dataset.motion === 'reduced' || (!!painter?.isSoftware() && !forced);
+    const animating = () => cosmosEnabled() && root.classList.contains('cosmos') && !still();
+
+    /** Paint a new nebula into the hidden canvas, then crossfade to it. */
+    const repaintNebula = async () => {
+      if (!painter) return;
+      const id = ++paintId;
+      const box = nebA.getBoundingClientRect();
+      const area = Math.max(1, box.width * box.height);
+      const scale = Math.min(0.7, Math.sqrt(650_000 / area)); // ≤ 0.65 MP: soft by nature, so scaled up it stays smooth
+      const w = Math.max(64, Math.round(box.width * scale)), h = Math.max(64, Math.round(box.height * scale));
+      // The first nebula goes straight into the visible canvas; later ones into the hidden one, then crossfade.
+      const first = !painted.w;
+      const back = first ? front : front === nebA ? nebB : nebA;
+      const ok = await painter.paint(back, w, h, skyTime, light, accent, () => disposed || id !== paintId);
+      if (!ok) return false;
+      painted = { w: box.width, h: box.height };
+      if (!first) {
+        const old = front;
+        back.style.visibility = 'visible';
+        back.style.opacity = '1';
+        old.style.opacity = '0';
+        front = back;
+        // Once faded out, the old canvas leaves the compositor entirely until the next crossfade.
+        window.setTimeout(() => old !== front && (old.style.visibility = 'hidden'), 7500);
+      }
+      return true;
+    };
+
+    const paintAllStars = () => {
+      paintStars(far, light, 2600, 1, 11);
+      paintStars(near, light, 9000, 1.35, 23);
+      sparkles(sparks, light);
+    };
+
+    const scheduleEvolve = () => {
+      window.clearTimeout(evolveTimer);
+      evolveTimer = window.setTimeout(async () => {
+        if (animating() && !document.hidden) {
+          skyTime += 24;
+          await repaintNebula();
+        }
+        if (!disposed) scheduleEvolve();
+      }, 28_000);
+    };
+    const scheduleMeteor = () => {
+      window.clearTimeout(meteorTimer);
+      meteorTimer = window.setTimeout(() => {
+        if (animating() && !document.hidden && !light) meteor(meteors);
+        if (!disposed) scheduleMeteor();
+      }, 6000 + Math.random() * 8000);
+    };
+
+    const applyMode = () => {
+      const on = cosmosEnabled();
+      root.classList.toggle('cosmos', on && painted.w > 0);
+      root.classList.toggle('cosmos-still', on && still());
+    };
+
+    const start = async () => {
+      painter = nebulaPainter();
+      if (!painter || !(await painter.whenReady()) || disposed) return;
+      paintAllStars();
+      if (!(await repaintNebula()) || disposed) return;
+      applyMode();
+      scheduleEvolve();
+      scheduleMeteor();
+    };
+
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        const box = nebA.getBoundingClientRect();
+        // Stars: repaint when the layer outgrew its pixels (synchronous, so nothing is ever shown cleared).
+        if (Math.abs(far.clientWidth * Math.min(window.devicePixelRatio || 1, 2) - far.width) > 2 || Math.abs(far.clientHeight * Math.min(window.devicePixelRatio || 1, 2) - far.height) > 40) paintAllStars();
+        // Nebula: the old one keeps showing (stretched) until the new one is ready.
+        if (Math.abs(box.width - painted.w) / painted.w > 0.2 || Math.abs(box.height - painted.h) / painted.h > 0.2) void repaintNebula();
+      }, 400);
+    };
+    const onToggle = () => {
+      applyMode();
+      if (cosmosEnabled() && !painted.w) void start();
+    };
+    const themeWatch = new MutationObserver(() => {
+      const nextLight = root.dataset.theme === 'light';
+      const nextAccent = accentRgb();
+      if (nextLight === light && nextAccent.every((v, i) => Math.abs(v - accent[i]) < 1e-3)) return;
+      light = nextLight;
+      accent = nextAccent;
+      if (!painted.w) return;
+      paintAllStars();
+      void repaintNebula();
+    });
+    themeWatch.observe(root, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+    const modeWatch = new MutationObserver(applyMode);
+    modeWatch.observe(root, { attributes: true, attributeFilter: ['data-motion'] });
+
+    // Pointer parallax on desktop: two depths drift a few pixels toward the pointer (eased by a CSS transition).
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const parFar = el.querySelector<HTMLElement>('.sky-par-far')!, parNear = el.querySelector<HTMLElement>('.sky-par-near')!;
+    let px = 0, py = 0;
+    const onPointer = (e: PointerEvent) => {
+      px = e.clientX / window.innerWidth - 0.5;
+      py = e.clientY / window.innerHeight - 0.5;
+      if (parFrame || !animating()) return;
+      parFrame = requestAnimationFrame(() => {
+        parFrame = 0;
+        parFar.style.transform = `translate3d(${(-px * 8).toFixed(1)}px, ${(-py * 6).toFixed(1)}px, 0)`;
+        parNear.style.transform = `translate3d(${(-px * 20).toFixed(1)}px, ${(-py * 14).toFixed(1)}px, 0)`;
+      });
+    };
+
     // Start once the app has painted and the browser is idle: the static sky shows until then.
-    let stop: (() => void) | undefined;
-    let cancelled = false;
-    const go = () => void (!cancelled && (stop = mount(el)));
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
-    const id = w.requestIdleCallback ? w.requestIdleCallback(go, { timeout: 2500 }) : window.setTimeout(go, 600);
+    const go = () => void (cosmosEnabled() ? start() : undefined);
+    startTimer = w.requestIdleCallback ? w.requestIdleCallback(go, { timeout: 2500 }) : window.setTimeout(go, 600);
+    window.addEventListener('resize', onResize);
+    window.addEventListener(COSMOS_EVENT, onToggle);
+    media.addEventListener('change', applyMode);
+    if (fine) window.addEventListener('pointermove', onPointer, { passive: true });
     return () => {
-      cancelled = true;
-      if (w.cancelIdleCallback) w.cancelIdleCallback(id);
-      else window.clearTimeout(id);
-      stop?.();
+      disposed = true;
+      if (w.cancelIdleCallback) w.cancelIdleCallback(startTimer);
+      else window.clearTimeout(startTimer);
+      [evolveTimer, meteorTimer, resizeTimer].forEach((t) => window.clearTimeout(t));
+      cancelAnimationFrame(parFrame);
+      themeWatch.disconnect();
+      modeWatch.disconnect();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener(COSMOS_EVENT, onToggle);
+      media.removeEventListener('change', applyMode);
+      window.removeEventListener('pointermove', onPointer);
+      root.classList.remove('cosmos', 'cosmos-still');
+      painter?.dispose();
     };
   }, []);
-  return <canvas ref={canvas} className="cosmos-canvas" aria-hidden="true" />;
+
+  return (
+    <div ref={sky} className="cosmos-sky" aria-hidden="true">
+      <div className="sky-par sky-par-far">
+        <div className="sky-drift">
+          <canvas className="sky-neb" style={{ opacity: 1 }} />
+          <canvas className="sky-neb" style={{ opacity: 0, visibility: 'hidden' }} />
+        </div>
+        <canvas className="sky-stars sky-stars-far" />
+      </div>
+      <div className="sky-par sky-par-near">
+        <canvas className="sky-stars sky-stars-near" />
+        <div className="sky-sparks" />
+      </div>
+      <div className="sky-meteors" />
+    </div>
+  );
 }

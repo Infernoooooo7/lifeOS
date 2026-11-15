@@ -4,13 +4,14 @@ import { chromium, devices } from '@playwright/test';
 import { sampleBackup } from '../../src/core/sample-data.mjs';
 const [, , mode = 'desktop', label = 'base', css = ''] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
-// GL=1 gives headless Chromium software WebGL (SwiftShader) so the animated sky runs; COSMOS=off switches it off.
+// GL=1 gives headless Chromium software WebGL (SwiftShader); COSMOS=off switches the sky off, COSMOS=force animates it
+// even on that software renderer.
 const glArgs = process.env.GL ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
 const browser = await chromium.launch({ args: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist', ...glArgs] });
 const ctx = await browser.newContext(mode === 'mobile' ? { ...devices['Pixel 7'] } : { viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
 await page.goto(base + '/app');
-await page.evaluate((off) => { localStorage.setItem('lifeos.identity', JSON.stringify({ mode: 'local' })); if (off) localStorage.setItem('lifeos.cosmos', 'off'); }, process.env.COSMOS === 'off');
+await page.evaluate((off) => { localStorage.setItem('lifeos.identity', JSON.stringify({ mode: 'local' })); if (off) localStorage.setItem('lifeos.cosmos', off); }, process.env.COSMOS === 'off' || process.env.COSMOS === 'force' ? process.env.COSMOS : '');
 await page.goto(base + '/app');
 await page.getByRole('heading', { name: 'What do you want LIFEOS to help with?' }).waitFor();
 for (const i of ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth']) await page.locator('section').getByRole('button', { name: i, exact: true }).click();
