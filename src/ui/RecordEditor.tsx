@@ -14,6 +14,9 @@ import { FormField } from './fields';
 import { Icon } from './icons';
 import { Button, Checkbox, IconButton, Menu, Sheet, cx, type MenuItem } from './kit';
 import { toast } from './overlays';
+import { openSealed, useVault, VaultLockedError } from '@/core/data/vault';
+import { isSealed } from '@/core/lib/vault';
+import { askUnlock, LockedEntry } from './vault';
 
 /** Resolve '@today' style defaults when a new record form opens. */
 export function resolveDefaults(fields: FieldDef[], currency: string, given: Fields = {}): Fields {
@@ -111,19 +114,33 @@ export function RecordEditor() {
   const allTasks = useRecords(request?.collection === 'tasks' ? 'tasks' : '__none');
   const allEvents = useRecords(request?.collection === 'events' ? 'events' : '__none');
 
-  const key = request ? `${request.collection}:${request.id ?? 'new'}` : null;
+  const { unlocked } = useVault();
+  const sealed = request?.collection === 'journal' && existing && isSealed(existing.sealed);
+  const key = request ? `${request.collection}:${request.id ?? 'new'}${sealed && unlocked ? ':open' : ''}` : null;
   useEffect(() => {
     if (!request) return setLoadedFor(null);
     if (loadedFor === key) return;
-    if (request.id) {
-      if (!existing) return;
-      setDraft({ ...existing });
-    } else setDraft(resolveDefaults(fields, prefs.currency, request.defaults));
-    setErrors({});
-    setLoadedFor(key);
-  }, [request, existing, key, loadedFor, fields, prefs.currency]);
+    let live = true;
+    void (async () => {
+      let next: Fields;
+      if (request.id) {
+        if (!existing) return;
+        next = { ...existing };
+        // An encrypted journal entry is decrypted into the form only; it is sealed again when saved.
+        if (sealed) next.content = unlocked ? ((await openSealed(existing)) ?? '') : undefined;
+      } else next = resolveDefaults(fields, prefs.currency, request.defaults);
+      if (!live) return;
+      setDraft(next);
+      setErrors({});
+      setLoadedFor(key);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [request, existing, key, loadedFor, fields, prefs.currency, sealed, unlocked]);
 
   if (!request || loadedFor !== key) return null;
+  const lockedText = !!sealed && !unlocked;
   const isNew = !request.id;
   const set = (k: string, v: unknown) => setDraft((d) => ({ ...d, [k]: v }));
 
@@ -146,13 +163,22 @@ export function RecordEditor() {
     }
     const data: Fields = {};
     for (const f of fields) if (f.k in draft) data[f.k] = draft[f.k];
+    if (lockedText) delete data.content;
     for (const k of Object.keys(request.defaults ?? {})) if (!(k in data)) data[k] = request.defaults![k];
     if (request.collection === 'tasks') {
       const wasDone = existing?.status === 'done';
       if (data.status === 'done' && !wasDone) data.completedAt = new Date().toISOString();
       if (data.status !== 'done') data.completedAt = null;
     }
-    const saved = isNew ? await create(request.collection, data) : await update(request.id!, data);
+    let saved: Rec | undefined;
+    try {
+      saved = isNew ? await create(request.collection, data) : await update(request.id!, data);
+    } catch (e) {
+      if (!(e instanceof VaultLockedError)) throw e;
+      if (await askUnlock()) return save();
+      toast('Not saved: the journal is locked.', { tone: 'bad' });
+      return null;
+    }
     if (!isNew && request.collection === 'tasks' && data.status === 'done' && existing?.status !== 'done' && existing) {
       const next = nextRecurringInstance({ ...existing, ...data } as unknown as TaskLike);
       if (next) await create('tasks', { ...next, notes: data.notes, ws: existing.ws }, { silent: true });
@@ -195,6 +221,8 @@ export function RecordEditor() {
       label: 'Duplicate', icon: 'copy',
       onClick: async () => {
         const { id: _id, _c, _ca, _ua, _dirty, _base, _seq, _s, ...rest } = existing;
+        if (lockedText) return void toast('Unlock your journal to duplicate this entry.', { tone: 'bad' });
+        if (sealed) Object.assign(rest, { sealed: null, content: draft.content ?? '' });
         const tf = titleField(def);
         const copy = await create(request.collection, { ...rest, [tf]: `${String(rest[tf] ?? '')} (copy)` });
         openEditor(request.collection, copy.id);
@@ -261,7 +289,7 @@ export function RecordEditor() {
             ) : (
               <>
                 <span className="label">{f.label}{f.req && <span className="text-accent"> *</span>}</span>
-                <FormField def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} autoFocus={isNew && i === 0} />
+                {lockedText && f.k === 'content' ? <LockedEntry compact /> : <FormField def={f} value={draft[f.k]} onChange={(v) => set(f.k, v)} rec={draft} autoFocus={isNew && i === 0} />}
                 {errors[f.k] ? <span className="mt-1 block text-xs text-bad">{errors[f.k]}</span> : f.help && <span className="mt-1 block text-xs text-faint">{f.help}</span>}
               </>
             )}

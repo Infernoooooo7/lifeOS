@@ -235,3 +235,57 @@ test.describe('two-step verification', () => {
     await other.close();
   });
 });
+
+test.describe('journal lock', () => {
+  test('private entries are encrypted before they sync, and open on another device with the passphrase', async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail();
+    await register(page, email);
+    await page.goto('/app/journal');
+    await page.getByLabel('Journal entry').fill('The secret plan for the surprise party');
+    await page.getByRole('button', { name: 'Private' }).click();
+    await expect(page.getByText(/Entry is private/)).toBeVisible();
+
+    await page.goto('/app/settings/privacy');
+    await page.getByRole('button', { name: 'Turn on journal lock' }).click();
+    await page.getByPlaceholder('New passphrase').fill('purple mango river');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByPlaceholder('Same passphrase').fill('purple mango river');
+    await page.getByRole('button', { name: 'Confirm' }).click();
+    await expect(page.getByText('Journal lock is on. 1 private entry encrypted.')).toBeVisible();
+    await waitForSync(page);
+
+    // What the server holds for this account: ciphertext, never the words.
+    const stored = await page.evaluate(async () => (await fetch('/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cursor: 0, changes: [] }) })).text());
+    expect(stored).toContain('"sealed"');
+    expect(stored).not.toContain('surprise party');
+
+    const phone = await secondDevice(browser, email, true);
+    await phone.goto('/app/journal');
+    await expect(phone.getByText('This entry is encrypted. Unlock your journal to read or change it.')).toBeVisible({ timeout: 20_000 });
+    await phone.getByRole('button', { name: 'Unlock', exact: true }).first().click();
+    await phone.getByPlaceholder('Journal passphrase').fill('wrong guess');
+    await phone.getByRole('button', { name: 'Unlock', exact: true }).last().click();
+    await expect(phone.getByText('That passphrase did not open your journal. Try again.')).toBeVisible();
+    await phone.getByPlaceholder('Journal passphrase').fill('purple mango river');
+    await phone.getByRole('button', { name: 'Unlock', exact: true }).last().click();
+    await expect(phone.getByLabel('Journal entry')).toHaveValue('The secret plan for the surprise party');
+
+    // Edits on the phone are sealed too, and the first device reads them after unlocking.
+    await phone.getByLabel('Journal entry').fill('The secret plan, now with cake');
+    await phone.waitForTimeout(1200);
+    await syncNow(phone);
+    const after = await phone.evaluate(async () => (await fetch('/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cursor: 0, changes: [] }) })).text());
+    expect(after).not.toContain('with cake');
+    await syncNow(page);
+    await page.goto('/app/journal'); // a reload forgets the key: the journal is locked again
+    await expect(page.getByText('This entry is encrypted. Unlock your journal to read or change it.')).toBeVisible();
+    await page.getByRole('button', { name: 'Unlock', exact: true }).first().click();
+    await page.getByPlaceholder('Journal passphrase').fill('purple mango river');
+    await page.getByRole('button', { name: 'Unlock', exact: true }).last().click();
+    await expect(page.getByLabel('Journal entry')).toHaveValue('The secret plan, now with cake');
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
+    await expect(page.getByText('This entry is encrypted. Unlock your journal to read or change it.')).toBeVisible();
+    await phone.context().close();
+  });
+});

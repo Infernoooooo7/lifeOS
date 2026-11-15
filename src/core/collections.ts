@@ -211,7 +211,7 @@ const defs: CollectionDef[] = [
     fields: [
       date('date', 'Date', { def: '@today', list: true, half: true }),
       select('kind', 'Type', [{ value: 'daily', label: 'Daily journal' }, { value: 'gratitude', label: 'Gratitude' }, { value: 'reflection', label: 'Reflection' }, { value: 'weekly', label: 'Weekly reflection' }, { value: 'monthly', label: 'Monthly reflection' }, { value: 'milestone', label: 'Milestone' }], { def: 'daily', list: true, half: true }),
-      { k: 'mood', label: 'Mood', t: 'select', opts: MOODS, list: true, half: true }, bool('private', 'Private', { half: true, help: 'Hidden behind a tap in lists and excluded from search previews.' }),
+      { k: 'mood', label: 'Mood', t: 'select', opts: MOODS, list: true, half: true }, bool('private', 'Private', { half: true, help: 'Hidden behind a tap and left out of search. With Journal lock on (Settings → Privacy & lock), the text is encrypted.' }),
       text('title', 'Title'), text('prompt', 'Prompt'), area('content', 'Entry'), tags('tags', 'Tags'),
     ],
   },

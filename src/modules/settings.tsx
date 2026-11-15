@@ -25,12 +25,13 @@ import { recordTitle } from '@/ui/fields';
 import { Icon, type IconName } from '@/ui/icons';
 import { Button, Empty, Field, IconButton, Segmented, Switch, cx } from '@/ui/kit';
 import { confirmDialog, promptDialog, toast } from '@/ui/overlays';
+import { JournalLockCard } from '@/ui/vault';
 
 const SECTIONS: { id: string; label: string; icon: IconName }[] = [
   { id: 'general', label: 'Profile', icon: 'user' }, { id: 'appearance', label: 'Appearance', icon: 'palette' }, { id: 'navigation', label: 'Navigation', icon: 'menu' },
   { id: 'formats', label: 'Formats', icon: 'calendarDays' }, { id: 'notifications', label: 'Notifications', icon: 'bell' }, { id: 'workspaces', label: 'Workspaces', icon: 'layers' },
   { id: 'categories', label: 'Categories', icon: 'tag' }, { id: 'data', label: 'Backup & data', icon: 'download' }, { id: 'sync', label: 'Sync', icon: 'cloud' },
-  { id: 'account', label: 'Account & security', icon: 'shield' }, { id: 'about', label: 'About & install', icon: 'info' },
+  { id: 'privacy', label: 'Privacy & lock', icon: 'lock' }, { id: 'account', label: 'Account & security', icon: 'shield' }, { id: 'about', label: 'About & install', icon: 'info' },
 ];
 
 function Row({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -553,6 +554,7 @@ function About() {
           <li>Your data is stored in this browser first. With an account it is also stored on the LIFEOS server so your devices can sync.</li>
           <li>Passwords are stored only as salted scrypt hashes; sessions use an httpOnly cookie.</li>
           <li>LIFEOS never stores passwords for other services and makes no requests to third parties.</li>
+          <li>With Journal lock on, private journal entries are encrypted on your device (AES-256-GCM) before they are saved or synced; the server only ever sees ciphertext.</li>
           <li>You can export everything and delete your account at any time.</li>
         </ul>
         <p className="mt-2 text-xs text-faint">Open-source components and their licences are listed in docs/LICENSES.md in the repository.</p>
@@ -584,6 +586,7 @@ export default function Settings({ sub }: ModuleProps) {
           {section === 'categories' && <Categories />}
           {section === 'data' && <DataSection />}
           {section === 'sync' && <SyncSection />}
+          {section === 'privacy' && <JournalLockCard />}
           {section === 'account' && <Account />}
           {section === 'about' && <About />}
           {section === 'general' && <Empty icon="settings" title="Looking for something?" hint="Appearance, navigation, notifications, backups and your account are in the sections on this page." />}

@@ -12,6 +12,23 @@ import { CollectionView } from '@/ui/CollectionView';
 import { Icon } from '@/ui/icons';
 import { Button, Section, Stat, cx } from '@/ui/kit';
 import { toast } from '@/ui/overlays';
+import { lockVault, useVault, VaultLockedError } from '@/core/data/vault';
+import { isSealed } from '@/core/lib/vault';
+import { askUnlock, LockedEntry, useEntryText } from '@/ui/vault';
+import type { Fields } from '@/core/sync/merge';
+
+/** Write a journal record; when the journal lock needs unlocking first, ask, then try once more. */
+async function write(id: string, patch: Fields): Promise<boolean> {
+  try {
+    await upsert('journal', id, patch);
+    return true;
+  } catch (e) {
+    if (!(e instanceof VaultLockedError)) throw e;
+    if (await askUnlock()) return write(id, patch);
+    toast('Not saved: the journal is locked.', { tone: 'bad' });
+    return false;
+  }
+}
 
 const TABS = [{ value: 'today', label: 'Today', icon: 'journal' as const }, { value: 'entries', label: 'History', icon: 'history' as const }, { value: 'mood', label: 'Mood', icon: 'smile' as const }, { value: 'reflect', label: 'Reflect', icon: 'idea' as const }];
 
@@ -41,36 +58,43 @@ function MoodPicker({ value, onChange }: { value: number | null; onChange: (v: n
 function TodayEntry({ date }: { date: string }) {
   const id = `jr:${date}:daily`;
   const entry = useRecord(id);
+  const vault = useVault();
+  const live = entry && !entry.deletedAt ? entry : null;
+  const stored = useEntryText(live);
   const [text, setText] = useState('');
   const dirty = useRef(false);
   const loaded = useRef<string | null>(null);
   useEffect(() => {
-    if (entry === undefined) return;
+    if (entry === undefined || !stored.ready) return;
     if (loaded.current !== id || !dirty.current) {
       loaded.current = id;
-      setText(String(entry?.deletedAt ? '' : (entry?.content ?? '')));
+      setText(stored.text);
     }
-  }, [entry, id]);
+  }, [entry, id, stored.ready, stored.text]);
   useEffect(() => {
     if (!dirty.current) return;
     const t = setTimeout(() => {
-      void upsert('journal', id, { date, kind: 'daily', content: text });
       dirty.current = false;
+      void write(id, { date, kind: 'daily', content: text });
     }, 700);
     return () => clearTimeout(t);
   }, [text, id, date]);
+  const isPrivate = !!live?.private;
+  const togglePrivate = () => void write(id, { date, kind: 'daily', private: !isPrivate, ...(stored.locked ? {} : { content: text }) }).then((ok) => ok && toast(!isPrivate ? (vault.config ? 'Entry is private and encrypted' : 'Entry is private — turn on Journal lock in Settings to encrypt it') : 'Entry is no longer private'));
   const prompt = PROMPTS[(parseDate(date)!.getDate() + parseDate(date)!.getMonth() * 3) % PROMPTS.length];
-  const live = entry && !entry.deletedAt ? entry : null;
   return (
     <div className="card">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1 basis-52"><div className="font-display text-lg font-semibold">{parseDate(date)!.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div><div className="text-xs text-faint">{text.trim() ? `${text.trim().split(/\s+/).length} words · saved automatically` : 'Saved automatically as you write'}</div></div>
-        <MoodPicker value={(live?.mood as number) ?? null} onChange={(mood) => void upsert('journal', id, { date, kind: 'daily', mood, content: text })} />
+        <MoodPicker value={(live?.mood as number) ?? null} onChange={(mood) => void write(id, { date, kind: 'daily', mood, ...(stored.locked ? {} : { content: text }) })} />
+        <Button size="sm" variant={isPrivate ? 'primary' : 'ghost'} icon="lock" aria-pressed={isPrivate} title={vault.config ? 'Private entries are encrypted' : 'Private entries are hidden behind a tap'} onClick={togglePrivate}>Private</Button>
       </div>
+      {stored.locked ? <LockedEntry /> : (<>
       <button type="button" className="mb-2 flex w-full items-start gap-2 rounded-xl bg-accent-soft px-3 py-2 text-left text-sm" onClick={() => { dirty.current = true; setText((t) => `${t}${t.trim() ? '\n\n' : ''}**${prompt}**\n`); }}>
         <Icon name="idea" size={15} className="mt-0.5 flex-none text-accent" /><span><span className="text-faint">Prompt · </span>{prompt}<span className="ml-1 text-accent">Use it</span></span>
       </button>
       <textarea className="input min-h-56 resize-y leading-relaxed" placeholder="How was your day?" aria-label="Journal entry" value={text} onChange={(e) => { dirty.current = true; setText(e.target.value); }} />
+      </>)}
     </div>
   );
 }
@@ -78,22 +102,25 @@ function TodayEntry({ date }: { date: string }) {
 function Gratitude({ date }: { date: string }) {
   const id = `jr:${date}:gratitude`;
   const entry = useRecord(id);
+  const stored = useEntryText(entry && !entry.deletedAt ? entry : null);
   const [items, setItems] = useState(['', '', '']);
-  const loaded = useRef(false);
+  const loaded = useRef<string | null>(null);
   useEffect(() => {
-    if (entry === undefined || loaded.current) return;
-    loaded.current = true;
-    const lines = String(entry?.deletedAt ? '' : (entry?.content ?? '')).split('\n').map((l) => l.replace(/^\d\.\s*/, ''));
+    if (entry === undefined || !stored.ready || stored.locked) return;
+    const mark = isSealed(entry?.sealed) ? 'sealed' : 'plain';
+    if (loaded.current === mark) return;
+    loaded.current = mark;
+    const lines = stored.text.split('\n').map((l) => l.replace(/^\d\.\s*/, ''));
     setItems([lines[0] ?? '', lines[1] ?? '', lines[2] ?? '']);
-  }, [entry]);
+  }, [entry, stored.ready, stored.locked, stored.text]);
   const save = (next: string[]) => {
     setItems(next);
-    if (next.some((x) => x.trim())) void upsert('journal', id, { date, kind: 'gratitude', title: 'Gratitude', content: next.map((x, i) => `${i + 1}. ${x}`).join('\n') });
+    if (next.some((x) => x.trim())) void write(id, { date, kind: 'gratitude', title: 'Gratitude', content: next.map((x, i) => `${i + 1}. ${x}`).join('\n') });
   };
   return (
     <div className="card">
       <h3 className="mb-2 flex items-center gap-2 font-sans text-sm font-semibold tracking-normal"><Icon name="heart" size={15} className="text-[#f472b6]" />Three good things</h3>
-      <div className="space-y-2">{items.map((v, i) => <input key={i} className="input" placeholder={`${i + 1}. I am grateful for…`} aria-label={`Gratitude ${i + 1}`} value={v} onChange={(e) => save(items.map((x, j) => (j === i ? e.target.value : x)))} />)}</div>
+      {stored.locked ? <LockedEntry compact /> : <div className="space-y-2">{items.map((v, i) => <input key={i} className="input" placeholder={`${i + 1}. I am grateful for…`} aria-label={`Gratitude ${i + 1}`} value={v} onChange={(e) => save(items.map((x, j) => (j === i ? e.target.value : x)))} />)}</div>}
     </div>
   );
 }
@@ -125,13 +152,14 @@ export default function Journal({ sub }: ModuleProps) {
   const avg = (list: typeof moods) => (list.length ? list.reduce((a, e) => a + Number(e.mood), 0) / list.length : 0);
   const week = moods.filter((e) => parseDate(e.date)! >= startOfWeek(now));
   const month = moods.filter((e) => parseDate(e.date)! >= addDays(now, -30));
-  const days = new Set(entries.filter((e) => String(e.content ?? '').trim()).map((e) => e.date));
+  const days = new Set(entries.filter((e) => String(e.content ?? '').trim() || isSealed(e.sealed)).map((e) => e.date));
   let streak = 0;
   for (let i = days.has(today) ? 0 : 1; days.has(ymd(addDays(now, -i))); i++) streak++;
+  const vault = useVault();
   const milestones = entries.filter((e) => e.kind === 'milestone').sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
   return (
-    <Page module="journal" tabs={TABS} tab={tab} actions={<Button variant="primary" size="sm" icon="plus" onClick={() => openEditor('journal')}>Entry</Button>}>
+    <Page module="journal" tabs={TABS} tab={tab} actions={<>{vault.config && (vault.unlocked ? <Button size="sm" variant="ghost" icon="lock" onClick={() => { lockVault(); toast('Journal locked'); }}>Lock</Button> : <Button size="sm" variant="ghost" icon="lock" onClick={() => void askUnlock()}>Unlock</Button>)}<Button variant="primary" size="sm" icon="plus" onClick={() => openEditor('journal')}>Entry</Button></>}>
       {tab === 'today' && (
         <div className="space-y-3">
           <TodayEntry key={today} date={today} />

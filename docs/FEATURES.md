@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**326 capabilities in 26 modules** — 313 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**327 capabilities in 26 modules** — 315 implemented, 4 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -25,7 +25,7 @@
 | Finance | Money | 15 | 1 | 0 | 0 |
 | Learning | Knowledge | 16 | 0 | 0 | 0 |
 | Health | Wellbeing | 12 | 0 | 0 | 0 |
-| Journal | Wellbeing | 8 | 1 | 0 | 0 |
+| Journal | Wellbeing | 10 | 0 | 0 | 0 |
 | Focus | Productivity | 10 | 0 | 0 | 0 |
 | Shopping | Lifestyle | 9 | 0 | 0 | 0 |
 | Travel | Lifestyle | 12 | 0 | 0 | 0 |
@@ -264,7 +264,8 @@ _A page a day._ Module id `journal`
 | ✅ | Weekly reflection | Guided weekly look-back. | `journal.weekly` |
 | ✅ | Monthly reflection | Guided monthly look-back. | `journal.monthly` |
 | ✅ | Life milestones | Mark entries that matter. | `journal.milestones` |
-| 🟡 | Private entries | Entries hidden until tapped and excluded from previews. _Partial: Private entries are hidden in the interface; they are not separately encrypted._ | `journal.private` |
+| ✅ | Private entries | Entries hidden until tapped and left out of search and previews. | `journal.private` |
+| ✅ | Journal lock | End-to-end encryption for private entries: a passphrase only you know unlocks them (AES-256-GCM, PBKDF2 600k). The server and backups hold only ciphertext; dates and moods stay readable so charts keep working. | `journal.journal-lock` |
 | ✅ | Searchable history | Filter by text, type, mood and tag. | `journal.search` |
 
 ## Focus

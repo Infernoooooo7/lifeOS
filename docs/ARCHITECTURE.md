@@ -156,6 +156,14 @@ reference rows of the same user — cross-user access is impossible at the schem
   `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS.
 - Markdown is sanitised with DOMPurify; CSV export neutralises formula injection.
 - No passwords for other services are ever stored: the account index has no password field (enforced by a test).
+- Journal lock (optional, end-to-end): a passphrase is stretched with PBKDF2-SHA-256 (600 000 iterations, random
+  16-byte salt) into a non-extractable AES-256-GCM key held only in memory — gone on reload, after 15 idle minutes, or
+  on "Lock". The text of private journal entries is sealed with a fresh 96-bit IV and the record id as additional
+  authenticated data (a sealed body moved to another record does not open). Sealing happens in a store write hook
+  (`src/core/data/vault.ts`), so every writer is covered; the server, sync payloads and backups carry only
+  `{ iv, ct }`. What syncs is the salt and a sealed check value, so another device can verify the passphrase.
+  Changing the passphrase re-encrypts every entry in one IndexedDB transaction. Dates, moods and types stay plain so
+  charts and streaks work. A forgotten passphrase cannot be recovered — the UI says so before the lock is set.
 
 ## 8. Offline and PWA
 

@@ -17,6 +17,7 @@ import { Icon, type IconName } from '@/ui/icons';
 import { Button, Checkbox, Empty, IconButton, Menu, Sheet, Spinner, cx, useMediaQuery, useScrollEdges } from '@/ui/kit';
 import { OverlayHost, promptDialog, toast } from '@/ui/overlays';
 import { RecordEditor, toggleTask } from '@/ui/RecordEditor';
+import { VaultSync } from '@/ui/vault';
 import { switchWorkspace } from './AppRoot';
 import { Logo } from './AuthScreen';
 import { Capture } from './Capture';
@@ -722,6 +723,7 @@ export function Shell() {
       <Capture />
       <NotificationCenter />
       <RecordEditor />
+      <VaultSync />
       <Sheet open={shortcuts} onClose={() => useApp.setState({ shortcuts: false })} title="Keyboard shortcuts" width={460}>
         <dl className="divide-y divide-line">
           {SHORTCUTS.map(([keys, what]) => <div key={keys} className="flex items-center justify-between gap-3 py-2 text-sm"><dt className="text-muted">{what}</dt><dd><kbd className="kbd">{keys}</kbd></dd></div>)}

@@ -66,9 +66,30 @@ async function logActivity(action: string, rec: Rec) {
   );
 }
 
+/**
+ * A hook that may rewrite a create or update before it is stored (the journal lock seals private text this way).
+ * Hooks run outside the database transaction, so they can await Web Crypto. With none registered, writes cost nothing extra.
+ */
+export type WriteHook = (collection: string, patch: Fields, prev: Rec | undefined) => Fields | Promise<Fields>;
+const writeHooks: WriteHook[] = [];
+export function addWriteHook(hook: WriteHook): () => void {
+  writeHooks.push(hook);
+  return () => {
+    const i = writeHooks.indexOf(hook);
+    if (i >= 0) writeHooks.splice(i, 1);
+  };
+}
+async function runWriteHooks(collection: string, patch: Fields, prev: Rec | undefined): Promise<Fields> {
+  let out = patch;
+  for (const hook of writeHooks) out = await hook(collection, out, prev);
+  return out;
+}
+
 export async function create(collection: string, data: Fields = {}, opts: WriteOptions = {}): Promise<Rec> {
+  const id = opts.id ?? (data.id as string) ?? uid();
+  if (writeHooks.length) data = await runWriteHooks(collection, { ...data, id }, undefined);
   const now = Date.now();
-  const rec: Rec = { ...data, id: opts.id ?? (data.id as string) ?? uid(), _c: collection, _ca: now, _ua: now, _dirty: 1, _base: null };
+  const rec: Rec = { ...data, id, _c: collection, _ca: now, _ua: now, _dirty: 1, _base: null };
   if (!GLOBAL_COLLECTIONS.has(collection) && rec.ws === undefined) rec.ws = ctx.ws;
   await getDb().records.put(stamp(rec));
   if (!opts.silent) await logActivity('created', rec);
@@ -77,6 +98,7 @@ export async function create(collection: string, data: Fields = {}, opts: WriteO
 }
 
 export async function createMany(collection: string, rows: Fields[], opts: WriteOptions = { silent: true }): Promise<Rec[]> {
+  if (writeHooks.length) rows = await Promise.all(rows.map((r) => runWriteHooks(collection, { ...r, id: (r.id as string) ?? uid() }, undefined)));
   const now = Date.now();
   const recs = rows.map((data, i) => {
     const rec: Rec = { ...data, id: (data.id as string) ?? uid(), _c: collection, _ca: now + i, _ua: now + i, _dirty: 1, _base: null };
@@ -91,6 +113,10 @@ export async function createMany(collection: string, rows: Fields[], opts: Write
 /** Merge `patch` into a record. Keeps the last synced version so the change can be merged field by field. */
 export async function update(id: string, patch: Fields, opts: WriteOptions = {}): Promise<Rec | undefined> {
   const db = getDb();
+  if (writeHooks.length) {
+    const current = await db.records.get(id);
+    if (current) patch = await runWriteHooks(current._c, patch, current);
+  }
   let prev: Rec | undefined;
   let next: Rec | undefined;
   await db.transaction('rw', db.records, async () => {
