@@ -11,7 +11,7 @@ sync. On the free hosting tier, the first visit after a quiet spell can take up 
 
 ## What is inside
 
-**331 capabilities in 26 modules — 319 implemented, 4 partial, 1 waiting on an integration, 7 planned.** Every
+**334 capabilities in 26 modules — 322 implemented, 4 partial, 1 waiting on an integration, 7 planned.** Every
 capability and its honest status is listed in [`docs/FEATURES.md`](docs/FEATURES.md) and in the in-app Marketplace,
 where each module can be switched on or off without losing data.
 
@@ -24,7 +24,7 @@ where each module can be switched on or off without losing data.
 | Notes | Markdown, links and backlinks, graph, version history |
 | Habits | Streaks, weekly targets, routines, consistency |
 | Goals | Goals, OKRs, milestones, vision board |
-| Finance | Accounts, budgets, subscriptions, debts, reports, multiple currencies |
+| Finance | Accounts, budgets, subscriptions, debts, reports, multiple currencies; a **safe-to-spend** figure and **net worth** |
 | Learning | Subjects, assignments, exams, spaced-repetition flashcards (FSRS) |
 | Health | Workouts, water, sleep, body, meals |
 | Journal | Daily pages, moods, prompts, reflections |
@@ -80,8 +80,8 @@ Deployment (Render blueprint included; Vercel and plain Node hosts also work): [
 Every result below was produced by running it — see [`docs/TESTING.md`](docs/TESTING.md) for the full report,
 performance measurements and the defects that testing found.
 
-- 190 unit and API/sync tests against a real PostgreSQL database
-- 92 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
+- 197 unit and API/sync tests against a real PostgreSQL database
+- 96 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
   two-step sign-in, end-to-end encrypted journal entries across devices, and WCAG 2.1 AA accessibility checks (axe) in both themes
 - Every module route checked for console errors and horizontal overflow at desktop, tablet and phone widths
 

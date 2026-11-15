@@ -643,6 +643,28 @@ function useAppBadge(wanted: boolean) {
   }, [count]);
 }
 
+/** Keep the screen on while a focus session is counting down (Screen Wake Lock API, where the browser has it). */
+function useFocusWakeLock(wanted: boolean) {
+  const counting = useFocus((f) => f.phase === 'focus' && f.pausedLeft === null);
+  useEffect(() => {
+    const wakeLock = (navigator as Navigator & { wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+    if (!wakeLock || !wanted || !counting) return;
+    let lock: { release: () => Promise<void> } | null = null;
+    let done = false;
+    const acquire = () => {
+      if (document.visibilityState !== 'visible') return;
+      wakeLock.request('screen').then((l) => (done ? void l.release().catch(() => undefined) : (lock = l))).catch(() => undefined); // e.g. battery saver refuses
+    };
+    acquire();
+    document.addEventListener('visibilitychange', acquire); // the system drops the lock when the app is hidden
+    return () => {
+      done = true;
+      document.removeEventListener('visibilitychange', acquire);
+      void lock?.release().catch(() => undefined);
+    };
+  }, [wanted, counting]);
+}
+
 function useServiceWorker() {
   useEffect(() => {
     if (!('serviceWorker' in navigator) || process.env.NODE_ENV !== 'production') return;
@@ -687,6 +709,7 @@ export function Shell() {
   useGlobalShortcuts();
   useServiceWorker();
   useAppBadge(prefs.notify.badge !== false);
+  useFocusWakeLock(prefs.focus.awake !== false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -605,3 +605,49 @@ test.describe('undo, sharing and memories', () => {
     await expect(widget).toContainText('1 week ago');
   });
 });
+
+test.describe('money at a glance, and focus', () => {
+  test('Finance shows what is safe to spend and the net worth, with the sums behind them', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/finance');
+    const safe = page.getByRole('region', { name: 'Safe to spend' });
+    await expect(safe).toBeVisible();
+    await expect(safe).toContainText(/a day|over for the month/);
+    await expect(safe).toContainText(/income.*regular bills.*spent so far/);
+    await page.goto('/app/finance/accounts');
+    const worth = page.getByRole('region', { name: 'Net worth' });
+    await expect(worth).toBeVisible();
+    await expect(worth).toContainText('Accounts and money owed to you');
+    await expect(worth).toContainText('Debts and overdrawn accounts');
+    // a new debt lowers it at once
+    const before = await worth.locator('.num').first().innerText();
+    await page.goto('/app/finance/debts');
+    await page.locator('#main-scroll').getByRole('button', { name: 'New debt' }).first().click();
+    const editor = page.getByRole('dialog', { name: 'New debt' });
+    await editor.getByLabel('Name').fill('Laptop loan');
+    await editor.getByLabel('Balance left').fill('50000');
+    await editor.getByRole('button', { name: 'Add debt' }).click();
+    await expect(page.getByText('Debt added')).toBeVisible();
+    await page.goto('/app/finance/accounts');
+    await expect(page.getByRole('region', { name: 'Net worth' }).locator('.num').first()).not.toHaveText(before);
+  });
+
+  test('the screen is kept awake while a focus session counts down, and released when it pauses', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __locks: { taken: number; released: number } };
+      w.__locks = { taken: 0, released: 0 };
+      Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => { w.__locks.taken++; return { release: async () => void w.__locks.released++ }; } } });
+    });
+    const locks = () => page.evaluate(() => (window as unknown as { __locks: { taken: number; released: number } }).__locks);
+    await startLocal(page);
+    await page.goto('/app/focus');
+    expect((await locks()).taken).toBe(0);
+    await page.getByRole('button', { name: 'Start focus' }).click();
+    await expect.poll(async () => (await locks()).taken).toBe(1);
+    await page.getByRole('button', { name: 'Pause' }).click();
+    await expect.poll(async () => (await locks()).released).toBe(1);
+    await page.getByRole('button', { name: 'Resume' }).click();
+    await expect.poll(async () => (await locks()).taken).toBe(2);
+  });
+});

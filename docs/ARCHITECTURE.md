@@ -211,6 +211,21 @@ reference rows of the same user — cross-user access is impossible at the schem
 - **The animated sky** hands each new nebula from an OffscreenCanvas to the screen as an ImageBitmap, so the GPU never
   stalls copying it back.
 
+### Money at a glance
+
+`src/core/lib/finance-health.ts` answers two questions from the person's own records, and the interface always shows
+the numbers each answer was made from.
+
+- **Safe to spend:** the month's income (what has arrived, or the usual month if that is higher), minus regular bills
+  whether paid or still to come, minus everything else spent so far, spread over the days left. A regular bill is a
+  category that appeared in at least two of the last three months, about once per month; the larger of "usual" and
+  "paid" counts. With no income on record it says nothing, and an overspent month never suggests a daily amount.
+- **Net worth:** account balances and money owed to you, minus overdrawn accounts and debts, with a six-month trend.
+  Savings goals are not added on top, and debts (which keep no history) are held at today's balance in the trend.
+
+Focus sessions hold a Screen Wake Lock while they count down (re-acquired when the app returns to the foreground,
+released on pause), so the screen of a phone on a stand does not dim mid-session.
+
 ## 9. Interface
 
 - **Design tokens** in `src/app/globals.css`: dark and light themes, one accent hue, density scale, widget styles.

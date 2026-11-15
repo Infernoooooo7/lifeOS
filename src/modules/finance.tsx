@@ -8,10 +8,11 @@ import { createMany, titleOf, update } from '@/core/data/store';
 import { downloadFile } from '@/core/lib/backup';
 import { parseAmount, parseCsvObjects, toCsv } from '@/core/lib/csv';
 import { addMonths, diffDays, fmtDate, parseDate, ym, ymd } from '@/core/lib/dates';
+import { netWorth, safeToSpend } from '@/core/lib/finance-health';
 import { spendingInsights } from '@/core/lib/finance-insights';
 import { CURRENCIES, DEFAULT_RATES, accountBalances, budgetStatus, byCategory, cashflow, convert, fmtMoney, inMonth, monthlyCost, payoffMonths, totals, type Txn } from '@/core/lib/money';
 import { Page, tabFrom, type ModuleProps } from '@/shell/Page';
-import { Bars, Donut } from '@/ui/charts';
+import { Bars, Donut, Lines } from '@/ui/charts';
 import { CollectionView } from '@/ui/CollectionView';
 import { Icon } from '@/ui/icons';
 import { Button, Empty, IconButton, Progress, Section, Sheet, Stat, cx } from '@/ui/kit';
@@ -121,6 +122,9 @@ export default function Finance({ sub }: ModuleProps) {
   // Insights only make sense for the month in progress.
   const insights = useMemo(() => (month === ym(now) ? spendingInsights(txns, now, cur, rates, (n) => fmtMoney(n, cur, { compact: true })) : []), [txns, now, month, cur, rates]);
 
+  const safe = useMemo(() => (month === ym(now) ? safeToSpend(txns, now, cur, rates) : null), [txns, now, month, cur, rates]);
+  const worth = useMemo(() => netWorth(accounts, txns, debts, now, cur, rates), [accounts, txns, debts, now, cur, rates]);
+
   return (
     <Page module="finance" tabs={TABS} tab={tab} wide={tab === 'transactions'} actions={<><Button size="sm" icon="upload" onClick={() => setImporting(true)}>Import</Button><Button variant="primary" size="sm" icon="plus" onClick={() => openEditor('transactions')}>Transaction</Button></>}>
       {(tab === 'overview' || tab === 'budgets' || tab === 'reports') && <div className="mb-4"><MonthPicker month={month} onChange={setMonth} /></div>}
@@ -133,6 +137,22 @@ export default function Finance({ sub }: ModuleProps) {
             <Stat label="Net" value={money(t.net, true)} icon="wallet" tone={t.net < 0 ? 'bad' : undefined} />
             <Stat label="Savings rate" value={`${Math.round(t.savingsRate * 100)}%`} icon="piggy" tone="accent" />
           </div>
+          {safe && (
+            <section className="card" aria-label="Safe to spend">
+              <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+                <div className="min-w-0">
+                  <div className="eyebrow">Safe to spend</div>
+                  {safe.left >= 0
+                    ? <div className="num mt-1 text-[1.9rem] font-semibold leading-none">{money(Math.floor(safe.perDay))}<span className="ml-1.5 text-base font-normal text-muted">a day</span></div>
+                    : <div className="num mt-1 text-[1.9rem] font-semibold leading-none text-bad">{money(-safe.left)}<span className="ml-1.5 text-base font-normal text-muted">over for the month</span></div>}
+                </div>
+                {safe.left >= 0 && <div className="text-sm text-muted"><b className="num text-text">{money(safe.left)}</b> left for the {safe.daysLeft === 1 ? 'last day' : `${safe.daysLeft} days`} of this month</div>}
+              </div>
+              <p className="mt-2 text-xs text-faint">
+                {money(safe.income)} income{safe.incomeExpected ? ' (your usual month, not all in yet)' : ''} − {money(safe.bills)} regular bills{safe.billsToCome > 0 ? ` (${money(safe.billsToCome)} still to come)` : ''} − {money(safe.spent)} spent so far.
+              </p>
+            </section>
+          )}
           {insights.length > 0 && (
             <Section title="Insights" icon="sparkles">
               <ul className="card space-y-2 !py-3">
@@ -199,6 +219,22 @@ export default function Finance({ sub }: ModuleProps) {
             <Button icon="refresh" onClick={() => openEditor('transactions', undefined, { type: 'transfer' })}>Transfer</Button>
             <Button variant="primary" icon="plus" onClick={() => openEditor('accounts')}>Account</Button>
           </div>
+          {worth && (
+            <section className="card mb-3" aria-label="Net worth">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] md:items-center">
+                <div>
+                  <div className="eyebrow">Net worth</div>
+                  <div className={cx('num mt-1 text-[1.9rem] font-semibold leading-none', worth.net < 0 && 'text-bad')}>{money(worth.net)}</div>
+                  <dl className="mt-3 space-y-1 text-sm">
+                    <div className="flex justify-between gap-3"><dt className="text-muted">Accounts and money owed to you</dt><dd className="num whitespace-nowrap">{money(worth.assets)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-muted">Debts and overdrawn accounts</dt><dd className="num whitespace-nowrap">{worth.liabilities ? `−${money(worth.liabilities)}` : money(0)}</dd></div>
+                  </dl>
+                </div>
+                <Lines data={worth.trend.map((p) => ({ label: parseDate(`${p.month}-01`)!.toLocaleDateString(undefined, { month: 'short' }), net: Math.round(p.net) }))} series={[{ key: 'net', name: 'Net worth', color: 'var(--accent)' }]} fmt={(v) => money(v, true)} label="Net worth at the end of each of the last six months" />
+              </div>
+              <p className="mt-2 text-xs text-faint">Savings goals are not added on top (that money sits in your accounts). Debts are shown at today’s balance for every month.</p>
+            </section>
+          )}
           {accounts.length === 0 ? <Empty icon="bank" title="No accounts yet" hint="Add your bank, cash and card accounts. Balances are derived from the opening balance and your transactions." /> : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-3">
               {accounts.filter((a) => !a.archived).map((a) => (

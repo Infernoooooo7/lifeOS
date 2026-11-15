@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**331 capabilities in 26 modules** — 319 implemented, 4 partial, 1 integration-dependent, 7 planned.
+**334 capabilities in 26 modules** — 322 implemented, 4 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -22,11 +22,11 @@
 | Notes | Knowledge | 13 | 0 | 0 | 1 |
 | Habits | Wellbeing | 13 | 0 | 0 | 0 |
 | Goals | Productivity | 10 | 1 | 0 | 0 |
-| Finance | Money | 15 | 1 | 0 | 0 |
+| Finance | Money | 17 | 1 | 0 | 0 |
 | Learning | Knowledge | 16 | 0 | 0 | 0 |
 | Health | Wellbeing | 12 | 0 | 0 | 0 |
 | Journal | Wellbeing | 10 | 0 | 0 | 0 |
-| Focus | Productivity | 10 | 0 | 0 | 0 |
+| Focus | Productivity | 11 | 0 | 0 | 0 |
 | Shopping | Lifestyle | 9 | 0 | 0 | 0 |
 | Travel | Lifestyle | 12 | 0 | 0 | 0 |
 | Documents | Lifestyle | 6 | 1 | 0 | 1 |
@@ -200,6 +200,8 @@ _Know where it goes._ Module id `finance`
 | ✅ | Subscriptions and recurring expenses | Renewal dates, monthly-equivalent cost and reminders. | `finance.subscriptions` |
 | ✅ | Subscriptions log themselves | On each renewal date the payment is recorded as an expense and the next date moves on — once per date across all devices, catching up missed months; month-end dates do not drift. | `finance.autolog` |
 | ✅ | Spending insights | A projection for the month and the categories running well above or below your usual three-month pace, in plain language. | `finance.insights` |
+| ✅ | Safe to spend | One number for the rest of the month: income, minus regular bills paid or still to come, minus what is already spent, spread over the days left — with the sums shown. | `finance.safe-to-spend` |
+| ✅ | Net worth | Accounts and money owed to you, minus debts and overdrawn accounts, with a six-month trend. | `finance.net-worth` |
 | ✅ | Debts and loans | Balances with payoff-time estimates. | `finance.debts` |
 | ✅ | Spending breakdown | Category chart for any month. | `finance.breakdown` |
 | ✅ | Cash-flow chart | Income versus expenses for the last months. | `finance.cashflow` |
@@ -284,6 +286,7 @@ _Deep work, on a timer._ Module id `focus`
 | ✅ | Daily focus goal | A minutes-per-day target with progress ring. | `focus.goal` |
 | ✅ | Ambient sounds | Generated rain, brown-noise and soft-pad soundscapes (no downloads). | `focus.sounds` |
 | ✅ | Full-screen focus mode | A distraction-free full-screen timer. | `focus.fullscreen` |
+| ✅ | Screen stays on | While a focus session counts down the screen does not dim or lock (where the browser supports it); it can be switched off in the timer settings. | `focus.awake` |
 | ✅ | Focus on a task | Attach a session to a task; time is recorded against it. | `focus.task` |
 
 ## Shopping

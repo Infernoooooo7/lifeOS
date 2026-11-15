@@ -102,7 +102,7 @@ export interface Prefs {
   views: Record<string, string>;
   workHours: { from: string; to: string };
   waterTarget: number;
-  focus: { work: number; short: number; long: number; every: number; goal: number; auto: boolean };
+  focus: { work: number; short: number; long: number; every: number; goal: number; auto: boolean; /** keep the screen on while a focus session runs */ awake: boolean };
   rates: Record<string, number>;
 }
 
@@ -112,7 +112,7 @@ export const DEFAULT_PREFS: Prefs = {
   quickActions: ['task', 'note', 'event', 'expense'], onboarded: false, interests: [],
   notify: { tasks: true, events: true, habits: true, renewals: true, dates: true, people: true, review: true, reviewDay: 0, browser: false, asked: false, badge: true, eventLead: 15, leadDays: 3 },
   quiet: { enabled: false, from: '22:00', to: '07:00' }, views: {}, workHours: { from: '09:00', to: '18:00' }, waterTarget: 2000,
-  focus: { work: 25, short: 5, long: 15, every: 4, goal: 120, auto: false }, rates: {},
+  focus: { work: 25, short: 5, long: 15, every: 4, goal: 120, auto: false, awake: true }, rates: {},
 };
 
 export const ACCENTS = [

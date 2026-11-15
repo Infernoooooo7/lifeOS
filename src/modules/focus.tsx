@@ -142,6 +142,7 @@ export default function Focus({ sub }: ModuleProps) {
                   <label key={k} className="block"><span className="label">{label}</span><input className="input" type="number" min={min} max={max} value={prefs.focus[k]} disabled={timer.phase !== 'idle' && k !== 'goal'} onChange={(e) => setPrefs({ focus: { ...prefs.focus, [k]: Math.max(min, Math.min(max, Number(e.target.value) || min)) } })} /></label>
                 ))}
                 <label className="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[var(--accent)]" checked={prefs.focus.auto} onChange={(e) => setPrefs({ focus: { ...prefs.focus, auto: e.target.checked } })} />Start breaks and the next session automatically</label>
+                {typeof navigator !== 'undefined' && 'wakeLock' in navigator && <label className="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[var(--accent)]" checked={prefs.focus.awake !== false} onChange={(e) => setPrefs({ focus: { ...prefs.focus, awake: e.target.checked } })} />Keep the screen on during focus sessions</label>}
               </div>
             </details>
           </div>
