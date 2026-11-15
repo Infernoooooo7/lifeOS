@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { MODULES, featureCounts } from '@/core/registry';
 import { HeroVisual } from '@/landing/HeroVisual';
+import { InstallButton } from '@/landing/InstallButton';
 import { Logo } from '@/shell/AuthScreen';
 import { Icon } from '@/ui/icons';
 
@@ -21,8 +22,9 @@ export default function Landing() {
       <header className="sticky top-0 z-30 mx-auto w-full max-w-6xl px-3 pt-3">
         <div className="glass-chrome flex items-center gap-3 !rounded-[20px] px-4 py-2.5">
         <Logo size={34} />
-        <span className="font-display text-lg font-semibold tracking-wide">LIFEOS</span>
+        <span className="font-display text-lg font-semibold tracking-wide max-[420px]:hidden">LIFEOS</span>
         <span className="flex-1" />
+        <InstallButton />
         <a href="/app" className="btn btn-primary">Open LIFEOS</a>
         </div>
       </header>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { restoreSample, startLocal } from './helpers';
 
 test('ships a valid web app manifest and icons', async ({ page, request }) => {
@@ -25,6 +25,7 @@ test('serves security headers and never caches the service worker or the API', a
   expect(h['x-content-type-options']).toBe('nosniff');
   expect(h['x-frame-options']).toBe('DENY');
   expect(h['referrer-policy']).toBeTruthy();
+  expect(h['x-lifeos-app']).toBe('1'); // the service worker stores only responses that carry it
   expect((await request.get('/sw.js')).headers()['cache-control']).toContain('no-cache');
   expect((await request.get('/api/health')).headers()['cache-control']).toContain('no-store');
 });
@@ -62,4 +63,44 @@ test('works offline: reloads, navigates between modules and keeps saving', async
   await page.goto('/some-page-that-is-not-cached');
   await expect(page.getByRole('heading', { name: 'You are offline' })).toBeVisible();
   await context.setOffline(false);
+});
+
+/** Wait until the service worker controls the page and has the app shell cached. */
+async function offlineReady(page: Page) {
+  await page.waitForFunction(async () => {
+    if (!navigator.serviceWorker?.controller) return false;
+    const keys = await caches.keys();
+    for (const k of keys) if (k.startsWith('lifeos-shell-') && (await (await caches.open(k)).match('/app'))) return true;
+    return false;
+  }, null, { timeout: 30_000 });
+}
+
+const heading = (page: Page) => page.getByRole('heading', { name: /Good (morning|afternoon|evening|night)/ });
+
+test.describe('installable app', () => {
+  test('Chrome considers it installable', async ({ page, context }) => {
+    const cdp = await context.newCDPSession(page);
+    for (const path of ['/', '/app']) {
+      await page.goto(path);
+      const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
+      expect(installabilityErrors, path).toEqual([]);
+      const { errors } = await cdp.send('Page.getAppManifest');
+      expect(errors, path).toEqual([]);
+    }
+  });
+
+  test('after one visit the app and the landing page open with no network', async ({ page, context }) => {
+    await startLocal(page);
+    await offlineReady(page);
+    await context.setOffline(true);
+    await page.reload();
+    await expect(heading(page)).toBeVisible();
+    await page.goto('/app/tasks');
+    await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible();
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: /Everything in your life/ })).toBeVisible();
+    await context.setOffline(false);
+  });
+  // The host's "waking up" page is covered in tests/unit/service-worker.test.ts: Playwright cannot intercept a service
+  // worker's own requests, so that logic is tested against an in-memory Cache API instead.
 });

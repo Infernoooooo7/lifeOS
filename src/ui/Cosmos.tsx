@@ -170,8 +170,11 @@ function paintStars(canvas: HTMLCanvasElement, light: boolean, perPx: number, si
 
 /** WebGL nebula painter: compiles once, then paints frames on request, a strip at a time. */
 function nebulaPainter() {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  // An OffscreenCanvas hands its picture over as an ImageBitmap without the GPU having to copy it back to the CPU
+  // (drawing a WebGL canvas into a 2D one stalls the GPU). Older browsers use a plain canvas and drawImage.
+  const offscreen = typeof OffscreenCanvas !== 'undefined' && typeof ImageBitmapRenderingContext !== 'undefined';
+  const canvas: HTMLCanvasElement | OffscreenCanvas = offscreen ? new OffscreenCanvas(64, 64) : document.createElement('canvas');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, preserveDrawingBuffer: true, powerPreference: 'low-power' }) as WebGL2RenderingContext | null;
   if (!gl) return null;
   const prog = build(gl, VERT, NEBULA);
   const parallel = gl.getExtension('KHR_parallel_shader_compile');
@@ -219,9 +222,17 @@ function nebulaPainter() {
       }
       gl.disable(gl.SCISSOR_TEST);
       if (cancelled()) return false;
-      target.width = w;
-      target.height = h;
-      target.getContext('2d')?.drawImage(canvas, 0, 0);
+      if (canvas instanceof HTMLCanvasElement) {
+        target.width = w;
+        target.height = h;
+        target.getContext('2d')?.drawImage(canvas, 0, 0);
+      } else {
+        // Zero-copy handover: the bitmap's GPU texture becomes the target canvas's picture.
+        const bitmap = canvas.transferToImageBitmap();
+        const ctx = target.getContext('bitmaprenderer');
+        if (ctx) ctx.transferFromImageBitmap(bitmap);
+        else bitmap.close();
+      }
       return true;
     },
     dispose: () => gl.getExtension('WEBGL_lose_context')?.loseContext(),

@@ -168,11 +168,26 @@ reference rows of the same user — cross-user access is impossible at the schem
 ## 8. Offline and PWA
 
 - `/app/[[...path]]` is statically generated and renders the same shell for every URL; navigation uses the History API.
-- The service worker (`src/app/sw.js/route.ts`, generated per build) serves the shell network-first with a cached
-  fallback, hashed static assets cache-first, and never touches `/api`. On install it caches the shell and its assets;
-  the app then warms the cache with every module chunk in the background.
+- The service worker (`src/app/sw.js/route.ts`, generated per build) is registered from the landing page and the app.
+  - **Pages:** the app shell (`/app/*`) and the landing page are served **cache-first** and refreshed in the background.
+    The installed app opens instantly, with no connection, and while the server is asleep.
+  - **Static files:** hashed assets are cache-first, and `/api` is never touched. On install it caches both pages and
+    every script they reference; the app then warms the cache with every module chunk, three at a time, Settings first.
+  - **Only LIFEOS's own responses are stored:** every response carries an `X-LifeOS-App` header (set in
+    `next.config.ts`), and nothing without it is cached. A host's "waking up" page, such as the one Render's free tier
+    shows while the server starts, can never replace the app or its scripts.
+  - **Updates:** a background refresh keeps a new page only when every script it references is already cached (same
+    version). A newer deployment is left to the new service worker, which caches it complete, so the offline copy is
+    never half old, half new.
+  - `tests/unit/service-worker.test.ts` runs the generated worker against an in-memory Cache API to check this.
 - A new deployment produces a new worker; the app shows "A new version is ready — Update".
-- Manifest, maskable icons, shortcuts, safe-area handling and an install button (Settings → About & install).
+- **Installable:** Chrome reports no installability errors (checked in `tests/e2e/pwa.spec.ts`).
+  - The manifest has 192/512 and maskable icons, shortcuts and standalone display, with safe-area handling.
+  - The browser's install prompt is captured from the first moment the app or landing page loads, and offered as
+    "Install app" on the landing page and in Settings → About & install. iPhone and iPad get the Share → Add to Home
+    Screen tip.
+- **The animated sky** hands each new nebula from an OffscreenCanvas to the screen as an ImageBitmap, so the GPU never
+  stalls copying it back.
 
 ## 9. Interface
 

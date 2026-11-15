@@ -35,6 +35,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },
+      // Marks every response as coming from LIFEOS itself. The service worker only stores responses that carry it, so a
+      // hosting provider's "waking up" page (Render's free tier) can never replace the offline copy of the app.
+      { source: '/:path*', headers: [{ key: 'X-LifeOS-App', value: '1' }] },
       {
         source: '/sw.js',
         headers: [

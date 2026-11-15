@@ -80,8 +80,8 @@ Deployment (Render blueprint included; Vercel and plain Node hosts also work): [
 Every result below was produced by running it — see [`docs/TESTING.md`](docs/TESTING.md) for the full report,
 performance measurements and the defects that testing found.
 
-- 174 unit and API/sync tests against a real PostgreSQL database
-- 84 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
+- 180 unit and API/sync tests against a real PostgreSQL database
+- 86 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
   two-step sign-in, end-to-end encrypted journal entries across devices, and WCAG 2.1 AA accessibility checks (axe) in both themes
 - Every module route checked for console errors and horizontal overflow at desktop, tablet and phone widths
 

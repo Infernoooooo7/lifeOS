@@ -11,6 +11,7 @@ import { OverlayHost } from '@/ui/overlays';
 import { AuthScreen, Logo } from './AuthScreen';
 import { startEngines } from './engines';
 import { Shell } from './Shell';
+import '@/core/install'; // listen for the browser's install prompt from the first moment, not only once Settings opens
 
 const wsKey = (identity: Identity) => `lifeos.ws.${dbNameFor(identity)}`;
 
