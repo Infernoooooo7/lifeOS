@@ -238,7 +238,9 @@ const defs: CollectionDef[] = [
       text('name', 'Service', { req: true }), money('amount', 'Price', { req: true, list: true, half: true, min: 0 }), currency(),
       select('cycle', 'Billing cycle', ['weekly', 'monthly', 'quarterly', 'yearly'], { def: 'monthly', list: true, half: true }), date('nextBillingDate', 'Next renewal', { list: true, half: true }),
       select('status', 'Status', STATUS([['active', 'Active', C.green], ['paused', 'Paused', C.amber], ['cancelled', 'Cancelled', C.slate]]), { def: 'active', list: true, half: true }), num('remindDays', 'Remind days before', { def: 3, half: true, min: 0 }),
-      select('category', 'Category', 'expenseCategories', { half: true }), rel('accountId', 'Paid from', 'accounts', { half: true }), url('url', 'Manage link'), notes(),
+      select('category', 'Category', 'expenseCategories', { half: true }), rel('accountId', 'Paid from', 'accounts', { half: true }),
+      bool('autoLog', 'Log payments automatically', { def: true, help: 'On each renewal date the payment is added to Finance as an expense and the next renewal date moves on.' }),
+      url('url', 'Manage link'), notes(),
     ],
   },
   {

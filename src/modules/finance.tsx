@@ -8,6 +8,7 @@ import { createMany, titleOf, update } from '@/core/data/store';
 import { downloadFile } from '@/core/lib/backup';
 import { parseAmount, parseCsvObjects, toCsv } from '@/core/lib/csv';
 import { addMonths, diffDays, fmtDate, parseDate, ym, ymd } from '@/core/lib/dates';
+import { spendingInsights } from '@/core/lib/finance-insights';
 import { CURRENCIES, DEFAULT_RATES, accountBalances, budgetStatus, byCategory, cashflow, convert, fmtMoney, inMonth, monthlyCost, payoffMonths, totals, type Txn } from '@/core/lib/money';
 import { Page, tabFrom, type ModuleProps } from '@/shell/Page';
 import { Bars, Donut } from '@/ui/charts';
@@ -117,6 +118,8 @@ export default function Finance({ sub }: ModuleProps) {
   const activeSubs = subscriptions.filter((s) => s.status !== 'cancelled' && s.status !== 'paused');
   const subsMonthly = activeSubs.reduce((a, s) => a + convert(monthlyCost(Number(s.amount) || 0, String(s.cycle)), (s.currency as string) || cur, cur, rates), 0);
   const change = prev.expense ? (t.expense - prev.expense) / prev.expense : null;
+  // Insights only make sense for the month in progress.
+  const insights = useMemo(() => (month === ym(now) ? spendingInsights(txns, now, cur, rates, (n) => fmtMoney(n, cur, { compact: true })) : []), [txns, now, month, cur, rates]);
 
   return (
     <Page module="finance" tabs={TABS} tab={tab} wide={tab === 'transactions'} actions={<><Button size="sm" icon="upload" onClick={() => setImporting(true)}>Import</Button><Button variant="primary" size="sm" icon="plus" onClick={() => openEditor('transactions')}>Transaction</Button></>}>
@@ -130,6 +133,18 @@ export default function Finance({ sub }: ModuleProps) {
             <Stat label="Net" value={money(t.net, true)} icon="wallet" tone={t.net < 0 ? 'bad' : undefined} />
             <Stat label="Savings rate" value={`${Math.round(t.savingsRate * 100)}%`} icon="piggy" tone="accent" />
           </div>
+          {insights.length > 0 && (
+            <Section title="Insights" icon="sparkles">
+              <ul className="card space-y-2 !py-3">
+                {insights.map((i) => (
+                  <li key={`${i.kind}-${i.category ?? ''}`} className="flex items-start gap-2.5 text-sm">
+                    <Icon name={i.kind === 'projection' ? 'trending' : i.kind === 'down' ? 'arrowDown' : 'arrowUp'} size={16} className={cx('mt-0.5 flex-none', i.kind === 'up' || i.kind === 'new' ? 'text-warn' : i.kind === 'down' ? 'text-good' : 'text-accent')} />
+                    <span>{i.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
           <div className="grid gap-3 lg:grid-cols-2">
             <Section title="Spending breakdown" icon="chart"><div className="card"><Donut data={cats.map((c) => ({ name: c.category, value: Math.round(c.amount) }))} fmt={(v) => money(v, true)} label="Spending by category" center={<div><div className="text-[0.65rem] text-faint">Spent</div><div className="num text-sm font-semibold">{money(t.expense, true)}</div></div>} /></div></Section>
             <Section title="Cash flow, last 6 months" icon="trending"><div className="card"><Bars data={flow} series={[{ key: 'income', name: 'Income', color: 'var(--good)' }, { key: 'expense', name: 'Expenses', color: 'var(--bad)' }]} fmt={(v) => money(v, true)} label="Income and expenses for the last six months" /></div></Section>

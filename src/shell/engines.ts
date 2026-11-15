@@ -108,6 +108,21 @@ export async function runAutomationTick(): Promise<void> {
   }
 }
 
+/** Subscriptions with automatic logging record their own payments (deterministic ids: once, on any device). */
+export async function runSubscriptionAutopost(): Promise<void> {
+  if (!hasDb() || !prefs || !prefs.onboarded) return;
+  const { dueSubscriptionCharges } = await import('@/core/lib/finance-insights');
+  const { charges, advance } = dueSubscriptionCharges(await list('subscriptions'), new Date());
+  let logged = 0;
+  for (const c of charges) {
+    if (await getRec(c.id)) continue;
+    await create('transactions', c.data, { id: c.id, silent: true });
+    logged++;
+  }
+  for (const a of advance) await update(a.id, { nextBillingDate: a.nextBillingDate, billingDay: a.billingDay }, { silent: true });
+  if (logged) toast(`Logged ${logged} subscription payment${logged === 1 ? '' : 's'} in Finance`, { icon: 'repeat' });
+}
+
 let started = false;
 export function startEngines(): void {
   if (started || typeof window === 'undefined') return;
@@ -117,9 +132,14 @@ export function startEngines(): void {
     if (!useApp.getState().ready) return;
     void runReminders().catch((e) => console.error('reminders failed', e));
     void runAutomationTick().catch((e) => console.error('automation tick failed', e));
+    void runSubscriptionAutopost().catch((e) => console.error('subscription logging failed', e));
   };
   setTimeout(tick, 4000);
   setInterval(tick, 60_000);
+  // If the app was not ready for the first pass (slow start), run one as soon as it is, not a minute later.
+  useApp.subscribe((s, prev) => {
+    if (s.ready && !prev.ready) setTimeout(tick, 1500);
+  });
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tick());
 }
 

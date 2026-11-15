@@ -188,6 +188,8 @@ export const MODULES: ModuleDef[] = [
       ['budgets', 'Monthly budgets', 'Per-category limits with warning and over-budget states.'],
       ['savings', 'Savings goals', 'Targets with progress and required monthly saving.'],
       ['subscriptions', 'Subscriptions and recurring expenses', 'Renewal dates, monthly-equivalent cost and reminders.'],
+      ['autolog', 'Subscriptions log themselves', 'On each renewal date the payment is recorded as an expense and the next date moves on — once per date across all devices, catching up missed months; month-end dates do not drift.'],
+      ['insights', 'Spending insights', 'A projection for the month and the categories running well above or below your usual three-month pace, in plain language.'],
       ['debts', 'Debts and loans', 'Balances with payoff-time estimates.'],
       ['breakdown', 'Spending breakdown', 'Category chart for any month.'],
       ['cashflow', 'Cash-flow chart', 'Income versus expenses for the last months.'],

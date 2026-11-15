@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**323 capabilities in 26 modules** — 310 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**325 capabilities in 26 modules** — 312 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -22,7 +22,7 @@
 | Notes | Knowledge | 13 | 0 | 0 | 1 |
 | Habits | Wellbeing | 13 | 0 | 0 | 0 |
 | Goals | Productivity | 10 | 1 | 0 | 0 |
-| Finance | Money | 13 | 1 | 0 | 0 |
+| Finance | Money | 15 | 1 | 0 | 0 |
 | Learning | Knowledge | 16 | 0 | 0 | 0 |
 | Health | Wellbeing | 12 | 0 | 0 | 0 |
 | Journal | Wellbeing | 8 | 1 | 0 | 0 |
@@ -197,6 +197,8 @@ _Know where it goes._ Module id `finance`
 | ✅ | Monthly budgets | Per-category limits with warning and over-budget states. | `finance.budgets` |
 | ✅ | Savings goals | Targets with progress and required monthly saving. | `finance.savings` |
 | ✅ | Subscriptions and recurring expenses | Renewal dates, monthly-equivalent cost and reminders. | `finance.subscriptions` |
+| ✅ | Subscriptions log themselves | On each renewal date the payment is recorded as an expense and the next date moves on — once per date across all devices, catching up missed months; month-end dates do not drift. | `finance.autolog` |
+| ✅ | Spending insights | A projection for the month and the categories running well above or below your usual three-month pace, in plain language. | `finance.insights` |
 | ✅ | Debts and loans | Balances with payoff-time estimates. | `finance.debts` |
 | ✅ | Spending breakdown | Category chart for any month. | `finance.breakdown` |
 | ✅ | Cash-flow chart | Income versus expenses for the last months. | `finance.cashflow` |

@@ -481,3 +481,31 @@ test.describe('meals', () => {
     await expect(page.getByText(/^Planned for dinner/)).toBeVisible();
   });
 });
+
+test.describe('money on autopilot', () => {
+  test('a subscription with automatic logging records missed payments once and moves its renewal date', async ({ page }) => {
+    await startLocal(page);
+    await page.goto('/app/finance/subscriptions');
+    await page.getByRole('button', { name: /^New subscription$/ }).first().click();
+    const editor = page.getByRole('dialog', { name: 'New subscription' });
+    await editor.getByLabel('Service').fill('StreamBox');
+    await editor.getByLabel('Price').fill('499');
+    const back = new Date();
+    back.setMonth(back.getMonth() - 2);
+    await editor.getByLabel('Next renewal').fill(`${back.getFullYear()}-${String(back.getMonth() + 1).padStart(2, '0')}-${String(Math.min(back.getDate(), 28)).padStart(2, '0')}`);
+    await expect(editor.getByRole('switch', { name: 'Log payments automatically' })).toHaveAttribute('aria-checked', 'true');
+    await editor.getByRole('button', { name: 'Add subscription' }).click();
+    await expect(page.getByText('Subscription added')).toBeVisible(); // saved before we reload
+    await page.reload(); // the background pass runs a few seconds after start-up
+    await page.goto('/app/finance/transactions');
+    await expect(page.getByRole('heading', { name: 'Finance', level: 1 })).toBeVisible();
+    const rows = page.locator('#main-scroll').getByText('StreamBox');
+    // Two or three payments, depending on the day of the month the test runs.
+    await expect.poll(() => rows.count(), { timeout: 20_000 }).toBeGreaterThanOrEqual(2);
+    const n = await rows.count();
+    await page.reload(); // another pass must not log them again
+    await expect(page.getByRole('heading', { name: 'Finance', level: 1 })).toBeVisible();
+    await page.waitForTimeout(6000);
+    await expect(rows).toHaveCount(n);
+  });
+});
