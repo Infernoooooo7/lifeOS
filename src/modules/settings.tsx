@@ -26,6 +26,7 @@ import { Icon, type IconName } from '@/ui/icons';
 import { Button, Empty, Field, IconButton, Segmented, Switch, cx } from '@/ui/kit';
 import { confirmDialog, promptDialog, toast } from '@/ui/overlays';
 import { JournalLockCard } from '@/ui/vault';
+import { COSMOS_EVENT, COSMOS_KEY, cosmosEnabled } from '@/ui/Cosmos';
 
 const SECTIONS: { id: string; label: string; icon: IconName }[] = [
   { id: 'general', label: 'Profile', icon: 'user' }, { id: 'appearance', label: 'Appearance', icon: 'palette' }, { id: 'navigation', label: 'Navigation', icon: 'menu' },
@@ -92,9 +93,25 @@ function Appearance({ prefs, set }: { prefs: Prefs; set: (p: Partial<Prefs>) => 
       <Row title="Density" hint="How tightly rows and cards are spaced."><Segmented label="Interface density" value={prefs.density} onChange={(density) => set({ density })} options={[{ value: 'compact', label: 'Compact' }, { value: 'default', label: 'Default' }, { value: 'comfortable', label: 'Comfortable' }]} /></Row>
       <Row title="Widget style"><Segmented label="Widget style" value={prefs.widgetStyle} onChange={(widgetStyle) => set({ widgetStyle })} options={[{ value: 'glass', label: 'Glass' }, { value: 'solid', label: 'Solid' }, { value: 'outline', label: 'Outline' }]} /></Row>
       <Row title="Reduce motion" hint="Turns off transitions and 3D animation. Your system setting is always respected."><Switch checked={prefs.motion === 'reduced'} onChange={(v) => set({ motion: v ? 'reduced' : 'full' })} label="Reduce motion" /></Row>
+      <Row title="Animated background" hint="A slowly drifting nebula and twinkling stars behind everything. Saved for this device; turn it off to save battery."><CosmosSwitch /></Row>
       <Row title="Spatial quality" hint="Auto adapts resolution and detail to the device."><Segmented label="Spatial quality" value={prefs.spatialQuality} onChange={(spatialQuality) => set({ spatialQuality })} options={[{ value: 'auto', label: 'Auto' }, { value: 'low', label: 'Low' }, { value: 'high', label: 'High' }]} /></Row>
     </Card>
   );
+}
+
+function CosmosSwitch() {
+  const [on, setOn] = useState(true);
+  useEffect(() => setOn(cosmosEnabled()), []);
+  const change = (v: boolean) => {
+    try {
+      localStorage.setItem(COSMOS_KEY, v ? 'on' : 'off');
+    } catch {
+      /* storage unavailable: the switch still applies until reload */
+    }
+    setOn(v);
+    window.dispatchEvent(new Event(COSMOS_EVENT));
+  };
+  return <Switch checked={on} onChange={change} label="Animated background" />;
 }
 
 const QUICK_KINDS: [string, string][] = [['task', 'Task'], ['note', 'Note'], ['event', 'Event'], ['expense', 'Expense'], ['idea', 'Idea'], ['reminder', 'Reminder'], ['link', 'Link'], ['goal', 'Goal'], ['journal', 'Journal']];

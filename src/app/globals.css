@@ -25,17 +25,18 @@
   --cyan: oklch(0.82 0.13 205);
   --blue: oklch(0.7 0.16 255);
 
-  --bg: #090a0e;
-  --bg-raised: #0e1016;
-  --surface: rgb(255 255 255 / 0.035);
-  --surface-2: rgb(255 255 255 / 0.06);
-  --surface-3: rgb(255 255 255 / 0.1);
-  --solid: #12141b;
-  --line: rgb(255 255 255 / 0.075);
-  --line-strong: rgb(255 255 255 / 0.15);
-  --text: #eceef4;
-  --muted: #9aa2b4;
-  --faint: #858da0;
+  /* Deep space: near-black indigo, cool lavender greys, glass tinted like night sky. */
+  --bg: #05060d;
+  --bg-raised: #0a0c19;
+  --surface: rgb(196 206 255 / 0.04);
+  --surface-2: rgb(196 206 255 / 0.07);
+  --surface-3: rgb(196 206 255 / 0.11);
+  --solid: #0c0f1f;
+  --line: rgb(190 200 255 / 0.085);
+  --line-strong: rgb(190 200 255 / 0.17);
+  --text: #eef0fb;
+  --muted: #a5abc8;
+  --faint: #8c92b0;
   --good: oklch(0.8 0.15 160);
   --warn: oklch(0.83 0.14 85);
   --bad: oklch(0.72 0.18 20);
@@ -43,24 +44,24 @@
   --glow: 0 0 0 1px var(--accent-soft), 0 8px 30px -10px oklch(0.8 0.13 var(--accent-h) / 0.35);
 
   /* Liquid glass material */
-  --glass-body: linear-gradient(140deg, rgb(255 255 255 / 0.105), rgb(255 255 255 / 0.035) 42%, rgb(255 255 255 / 0.07));
-  --glass-chrome: linear-gradient(140deg, rgb(58 64 82 / 0.72), rgb(18 21 31 / 0.8) 46%, rgb(44 50 66 / 0.74));
-  --glass-panel: linear-gradient(150deg, rgb(38 44 60 / 0.97), rgb(17 20 30 / 0.98));
+  --glass-body: linear-gradient(140deg, rgb(186 200 255 / 0.1), rgb(150 160 230 / 0.035) 42%, rgb(206 186 255 / 0.07));
+  --glass-chrome: linear-gradient(140deg, rgb(50 56 104 / 0.62), rgb(13 15 36 / 0.74) 46%, rgb(42 44 92 / 0.66));
+  --glass-panel: linear-gradient(150deg, rgb(30 34 72 / 0.96), rgb(11 13 31 / 0.97));
   --glass-control: linear-gradient(180deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.05));
   --glass-thumb: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.1));
   --glass-well: rgb(0 0 0 / 0.22);
   --well-shade: 0.35;
-  --glass-line: rgb(255 255 255 / 0.12);
-  --glass-top: rgb(255 255 255 / 0.2);
+  --glass-line: rgb(200 210 255 / 0.13);
+  --glass-top: rgb(220 228 255 / 0.22);
   --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.24), inset 0 0 0 1px rgb(255 255 255 / 0.04), inset 0 -1px 0 rgb(0 0 0 / 0.28);
   --glass-shadow: 0 18px 44px -22px rgb(0 0 0 / 0.8), 0 2px 8px -2px rgb(0 0 0 / 0.3);
   --glass-blur: 22px;
   --panel-shadow: 0 34px 90px -24px rgb(0 0 0 / 0.65);
   --glass-sat: 175%;
   --sheen-max: 0.09;
-  --aurora-1: 0.34;
-  --aurora-2: 0.26;
-  --aurora-3: 0.2;
+  --aurora-1: 0.7;
+  --aurora-2: 0.55;
+  --aurora-3: 0.4;
   --grain: 0.05;
   --tile-l: 0.86;
 
@@ -79,7 +80,7 @@
   --violet: oklch(0.52 0.2 295);
   --cyan: oklch(0.58 0.12 215);
   --blue: oklch(0.52 0.18 255);
-  --bg: #f3f4f8;
+  --bg: #eff0f8;
   --bg-raised: #ffffff;
   --surface: rgb(255 255 255 / 0.72);
   --surface-2: rgb(255 255 255 / 0.95);
@@ -254,13 +255,41 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
-    /* Static on purpose: an animated, filtered full-screen layer forces every glass surface above it to
-       re-blur on every frame. Soft radial gradients need no blur filter. */
+    /* The static sky (no WebGL, reduced transparency, or the animation switched off): indigo and violet nebulae
+       and a tile of tiny stars. Soft radial gradients need no blur filter. The animated sky (src/ui/Cosmos.tsx)
+       replaces it when it runs. */
     background:
-      radial-gradient(46% 42% at 12% 10%, oklch(0.72 0.17 var(--accent-h) / var(--aurora-1)), transparent 72%),
-      radial-gradient(40% 38% at 90% 6%, oklch(0.66 0.2 calc(var(--accent-h) + 75) / var(--aurora-2)), transparent 72%),
-      radial-gradient(48% 44% at 80% 92%, oklch(0.7 0.16 calc(var(--accent-h) - 35) / var(--aurora-2)), transparent 74%),
-      radial-gradient(38% 38% at 16% 88%, oklch(0.68 0.19 calc(var(--accent-h) + 130) / var(--aurora-3)), transparent 72%);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Ccircle cx='103.6' cy='48.3' r='1.0' fill='%23fff' fill-opacity='0.38'/%3E%3Ccircle cx='117.0' cy='18.6' r='0.8' fill='%23fff' fill-opacity='0.48'/%3E%3Ccircle cx='138.8' cy='22.4' r='0.45' fill='%23fff' fill-opacity='0.68'/%3E%3Ccircle cx='264.6' cy='39.6' r='0.5' fill='%23fff' fill-opacity='0.73'/%3E%3Ccircle cx='184.7' cy='126.9' r='0.5' fill='%23dbe6ff' fill-opacity='0.38'/%3E%3Ccircle cx='92.7' cy='46.2' r='0.45' fill='%23dbe6ff' fill-opacity='0.69'/%3E%3Ccircle cx='33.0' cy='182.8' r='0.5' fill='%23fff' fill-opacity='0.57'/%3E%3Ccircle cx='180.6' cy='198.1' r='0.7' fill='%23fff1de' fill-opacity='0.76'/%3E%3Ccircle cx='248.7' cy='149.0' r='0.7' fill='%23dbe6ff' fill-opacity='0.57'/%3E%3Ccircle cx='254.2' cy='223.7' r='0.5' fill='%23e9dcff' fill-opacity='0.4'/%3E%3Ccircle cx='168.1' cy='280.0' r='1.0' fill='%23fff' fill-opacity='0.62'/%3E%3Ccircle cx='37.8' cy='133.8' r='1.25' fill='%23fff1de' fill-opacity='0.56'/%3E%3Ccircle cx='134.9' cy='307.8' r='0.45' fill='%23e9dcff' fill-opacity='0.81'/%3E%3Ccircle cx='108.8' cy='112.1' r='0.7' fill='%23fff1de' fill-opacity='0.7'/%3E%3Ccircle cx='22.0' cy='30.0' r='0.6' fill='%23fff' fill-opacity='0.63'/%3E%3Ccircle cx='19.4' cy='224.5' r='1.0' fill='%23fff1de' fill-opacity='0.7'/%3E%3Ccircle cx='91.1' cy='123.5' r='1.0' fill='%23fff1de' fill-opacity='0.56'/%3E%3Ccircle cx='113.7' cy='195.5' r='0.7' fill='%23e9dcff' fill-opacity='0.39'/%3E%3Ccircle cx='41.4' cy='79.2' r='0.7' fill='%23fff1de' fill-opacity='0.9'/%3E%3Ccircle cx='25.8' cy='143.7' r='0.8' fill='%23dbe6ff' fill-opacity='0.52'/%3E%3Ccircle cx='262.2' cy='276.5' r='0.6' fill='%23e9dcff' fill-opacity='0.77'/%3E%3Ccircle cx='218.5' cy='121.7' r='0.5' fill='%23dbe6ff' fill-opacity='0.44'/%3E%3Ccircle cx='48.4' cy='210.7' r='0.45' fill='%23dbe6ff' fill-opacity='0.64'/%3E%3Ccircle cx='84.1' cy='1.3' r='0.7' fill='%23e9dcff' fill-opacity='0.67'/%3E%3Ccircle cx='305.0' cy='221.0' r='0.8' fill='%23fff' fill-opacity='0.92'/%3E%3Ccircle cx='146.1' cy='278.7' r='1.25' fill='%23fff1de' fill-opacity='0.76'/%3E%3Ccircle cx='127.4' cy='126.1' r='0.7' fill='%23fff' fill-opacity='0.73'/%3E%3Ccircle cx='61.0' cy='315.1' r='0.7' fill='%23e9dcff' fill-opacity='0.45'/%3E%3Ccircle cx='192.2' cy='32.8' r='0.8' fill='%23fff' fill-opacity='0.44'/%3E%3Ccircle cx='303.7' cy='196.4' r='0.45' fill='%23fff1de' fill-opacity='0.87'/%3E%3Ccircle cx='47.5' cy='80.7' r='0.6' fill='%23fff1de' fill-opacity='0.71'/%3E%3Ccircle cx='39.3' cy='271.7' r='0.7' fill='%23e9dcff' fill-opacity='0.64'/%3E%3Ccircle cx='27.5' cy='32.7' r='0.6' fill='%23fff1de' fill-opacity='0.79'/%3E%3Ccircle cx='265.2' cy='51.7' r='0.45' fill='%23e9dcff' fill-opacity='0.47'/%3E%3Ccircle cx='46.9' cy='173.8' r='0.45' fill='%23e9dcff' fill-opacity='0.8'/%3E%3Ccircle cx='313.1' cy='276.3' r='1.0' fill='%23e9dcff' fill-opacity='0.86'/%3E%3Ccircle cx='290.6' cy='113.8' r='0.5' fill='%23e9dcff' fill-opacity='0.67'/%3E%3Ccircle cx='203.7' cy='196.2' r='1.25' fill='%23dbe6ff' fill-opacity='0.94'/%3E%3Ccircle cx='257.9' cy='261.9' r='1.0' fill='%23dbe6ff' fill-opacity='0.83'/%3E%3Ccircle cx='165.6' cy='113.8' r='0.45' fill='%23e9dcff' fill-opacity='0.94'/%3E%3Ccircle cx='151.1' cy='62.0' r='0.8' fill='%23fff1de' fill-opacity='0.92'/%3E%3Ccircle cx='258.7' cy='231.4' r='0.6' fill='%23e9dcff' fill-opacity='0.92'/%3E%3Ccircle cx='25.8' cy='32.7' r='0.7' fill='%23dbe6ff' fill-opacity='0.47'/%3E%3Ccircle cx='154.4' cy='315.3' r='0.8' fill='%23fff1de' fill-opacity='0.85'/%3E%3Ccircle cx='290.9' cy='110.1' r='1.0' fill='%23fff' fill-opacity='0.4'/%3E%3Ccircle cx='291.1' cy='250.3' r='1.25' fill='%23dbe6ff' fill-opacity='0.47'/%3E%3C/svg%3E"),
+      radial-gradient(70% 55% at 22% 8%, oklch(0.36 0.14 278 / var(--aurora-1)), transparent 72%),
+      radial-gradient(50% 45% at 88% 16%, oklch(0.4 0.17 305 / var(--aurora-2)), transparent 72%),
+      radial-gradient(60% 50% at 72% 94%, oklch(0.4 0.12 var(--accent-h) / var(--aurora-2)), transparent 74%),
+      radial-gradient(40% 34% at 10% 86%, oklch(0.42 0.16 335 / var(--aurora-3)), transparent 72%);
+  }
+  [data-theme='light'] .app-canvas::before {
+    background:
+      radial-gradient(60% 50% at 15% 8%, oklch(0.86 0.06 280 / 0.8), transparent 72%),
+      radial-gradient(45% 40% at 90% 12%, oklch(0.88 0.06 320 / 0.7), transparent 72%),
+      radial-gradient(55% 45% at 78% 92%, oklch(0.88 0.06 var(--accent-h) / 0.7), transparent 74%);
+  }
+  /* The animated sky is a fixed canvas under everything; page roots turn transparent to show it. Full-screen
+     overlays that also use .app-canvas (focus mode, onboarding) keep their own opaque static sky. */
+  .cosmos-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    display: none;
+    pointer-events: none;
+  }
+  .cosmos .cosmos-canvas {
+    display: block;
+  }
+  .cosmos .app-canvas:not(.fixed) {
+    background: transparent;
+  }
+  .cosmos .app-canvas:not(.fixed)::before {
+    display: none;
   }
   .app-canvas::after {
     content: '';

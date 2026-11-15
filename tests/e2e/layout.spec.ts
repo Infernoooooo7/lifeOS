@@ -82,3 +82,27 @@ test('landing page is static, fast to read and links into the app', async ({ pag
   await expect(page).toHaveURL(/\/app$/);
   expect(errors).toEqual([]);
 });
+
+test.describe('animated sky', () => {
+  // The suite starts with the sky off (under SwiftShader it renders on the CPU); this test switches it on and off.
+  test('runs behind the app when switched on, survives a reload, and switches off for this device', async ({ page }) => {
+    const errors = trackErrors(page);
+    await startLocal(page);
+    const html = page.locator('html');
+    const sky = page.locator('canvas.cosmos-canvas');
+    await expect(html).not.toHaveClass(/\bcosmos\b/);
+    await page.goto('/app/settings/appearance');
+    const toggle = page.getByRole('switch', { name: 'Animated background' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(html).toHaveClass(/\bcosmos\b/, { timeout: 15_000 });
+    await expect(sky).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Animated background' })).toHaveAttribute('aria-checked', 'true');
+    await expect(html).toHaveClass(/\bcosmos\b/, { timeout: 15_000 }); // starts again once the browser is idle
+    await page.getByRole('switch', { name: 'Animated background' }).click();
+    await expect(html).not.toHaveClass(/\bcosmos\b/);
+    await expect(sky).toBeHidden();
+    expect(errors.filter((e) => /cosmos|shader|webgl/i.test(e))).toEqual([]);
+  });
+});

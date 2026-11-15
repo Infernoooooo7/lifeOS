@@ -502,8 +502,8 @@ function Onboarding({ onDone }: { onDone: () => void }) {
   const selection = chosen ?? recommended;
   const optional = MODULES.filter((m) => !m.core);
   const finish = async () => {
-    for (const m of optional) await setModule(m.id, { enabled: selection.has(m.id) });
-    setPrefs({ onboarded: true, interests });
+    await Promise.all(optional.map((m) => setModule(m.id, { enabled: selection.has(m.id) }))); // concurrent: one round of writes, not two dozen
+    await setPrefs({ onboarded: true, interests }); // saved before the overlay closes, so a reload cannot undo it
     if (example) await import('@/core/lib/sample').then((m) => m.loadSampleData());
     onDone();
     toast(example ? 'Welcome to LIFEOS. This is an example week — remove it any time in Settings → Backup & data.' : 'Welcome to LIFEOS. Press the + button any time to capture something.', { tone: 'good', duration: 6000 });

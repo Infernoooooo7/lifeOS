@@ -15,7 +15,8 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 3,
   retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'off', serviceWorkers: 'allow', launchOptions: { args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } },
+  // The animated sky renders on the CPU under SwiftShader; it is off by default here and tested on its own (layout.spec).
+  use: { baseURL: `http://localhost:${PORT}`, storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: 'lifeos.cosmos', value: 'off' }] }] }, trace: 'off', serviceWorkers: 'allow', launchOptions: { args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 820 } } },
     { name: 'phone', use: { ...devices['Pixel 7'] }, testMatch: /(workflows|layout)\.spec\.ts/ },

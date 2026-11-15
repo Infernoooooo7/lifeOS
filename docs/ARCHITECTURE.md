@@ -186,11 +186,26 @@ reference rows of the same user — cross-user access is impossible at the schem
   chunk when the browser is idle and has WebGL 2, fades in after its third frame, picks a detail tier per device
   (particles, subdivision, noise octaves, pixel ratio), steps resolution and bloom down when the frame rate drops,
   stops rendering while scrolled out of view, and draws one still frame under `prefers-reduced-motion`.
-- **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over a static aurora of the
-  accent hue (plus a faint grain) and a pointer-following sheen (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar,
+- **Astral sky** (`src/ui/Cosmos.tsx`): the dark theme is deep indigo space with cool lavender greys and indigo-tinted
+  glass. Behind every page runs a raw WebGL 2 sky (no three.js in the app shell), drawn in two passes:
+  - A domain-warped fbm nebula along a Milky Way band, tinted by the accent hue. It renders at about a third of the
+    resolution and refreshes every third frame.
+  - A screen pass that upsamples the nebula and adds three parallax layers of twinkling stars and the occasional
+    shooting star. The stars are baked once into a repeating 512² texture with each star's twinkle phase in alpha, so
+    a frame costs three texture samples; the meteor maths runs only while one flies.
+
+  The sky is capped at 24 fps and a pixel ratio of 1, and starts only when the browser is idle. It holds still while
+  anything scrolls and for 250 ms after, pauses in hidden tabs, and steps resolution down if frames keep arriving
+  late. It draws one still frame under reduced motion (the system setting or the app's own) and is switched per
+  device in Settings → Appearance. Software renderers (no GPU acceleration) get one still frame. A static CSS sky (nebula gradients and a star tile) is the fallback. The light theme
+  shows the same clouds as pastel tints on a pale dawn sky. Measured under software WebGL with 4× CPU throttling, the
+  settled idle frame goes from 16.7 to 20.1 ms and scrolling from 20.7 to 26.4 ms, with p95 33 ms against 50.
+- **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over the sky (plus a faint
+  grain) and a pointer-following sheen (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar,
   top bar, context panel, phone tab bar and side sheets float as rounded glass panes. `prefers-reduced-transparency` and
   the Solid / Outline widget styles switch to opaque surfaces.
-- **Performance rules for the glass** (each measured; see `docs/TESTING.md`): the aurora is never animated or filtered;
+- **Performance rules for the glass** (each measured; see `docs/TESTING.md`): no CSS-animated or filtered background
+  layer (the sky is one WebGL canvas that holds still during scrolling);
   backdrop blur is used only where content moves underneath (top bar, phone tab bar, menus, toasts, floating bars:
   `.glass-chrome`, `.glass-float`), never on in-page cards, full-screen dialog backdrops or large sheets.
 - **Narrow layouts:** below 1180 px the sidebar is an icon rail; stat cards size their figures to their own width

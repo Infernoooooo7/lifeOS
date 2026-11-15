@@ -4,11 +4,13 @@ import { chromium, devices } from '@playwright/test';
 import { sampleBackup } from '../../src/core/sample-data.mjs';
 const [, , mode = 'desktop', label = 'base', css = ''] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
-const browser = await chromium.launch({ args: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist'] });
+// GL=1 gives headless Chromium software WebGL (SwiftShader) so the animated sky runs; COSMOS=off switches it off.
+const glArgs = process.env.GL ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
+const browser = await chromium.launch({ args: ['--enable-gpu-rasterization', '--ignore-gpu-blocklist', ...glArgs] });
 const ctx = await browser.newContext(mode === 'mobile' ? { ...devices['Pixel 7'] } : { viewport: { width: 1440, height: 900 } });
 const page = await ctx.newPage();
 await page.goto(base + '/app');
-await page.evaluate(() => localStorage.setItem('lifeos.identity', JSON.stringify({ mode: 'local' })));
+await page.evaluate((off) => { localStorage.setItem('lifeos.identity', JSON.stringify({ mode: 'local' })); if (off) localStorage.setItem('lifeos.cosmos', 'off'); }, process.env.COSMOS === 'off');
 await page.goto(base + '/app');
 await page.getByRole('heading', { name: 'What do you want LIFEOS to help with?' }).waitFor();
 for (const i of ['Work', 'Study', 'Money', 'Health', 'Home', 'Travel', 'Creativity', 'Self-growth']) await page.locator('section').getByRole('button', { name: i, exact: true }).click();
@@ -36,6 +38,7 @@ async function frames(fn) {
 }
 const idle = await frames(() => page.waitForTimeout(2000));
 const scroll = await frames(async () => { for (let i = 0; i < 25; i++) { await page.mouse.wheel(0, i < 13 ? 220 : -220); await page.waitForTimeout(60); } });
+const settled = await frames(() => page.waitForTimeout(2000));
 const t0 = Date.now();
 await page.evaluate(() => (window.__lt = []));
 const nav = [];
@@ -48,5 +51,5 @@ for (const r of mode === 'mobile' ? ['/tasks', '/calendar', '/', '/finance', '/n
   nav.push(Date.now() - s - 300);
 }
 const longtasks = await page.evaluate(() => ({ count: window.__lt.length, total: Math.round(window.__lt.reduce((a, b) => a + b, 0)), max: Math.round(Math.max(0, ...window.__lt)) }));
-console.log(JSON.stringify({ label, mode, idle, scroll, nav, longtasks }));
+console.log(JSON.stringify({ label, mode, idle, scroll, settled, nav, longtasks }));
 await browser.close();

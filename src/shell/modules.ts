@@ -36,19 +36,27 @@ export const LOADERS: Record<string, Loader> = {
   settings: () => import('@/modules/settings'),
 };
 
-/** Fetch every module chunk in the background so all modules open offline. */
+/** The modules most needed offline are cached first (Settings shows what is waiting to sync). */
+const FIRST = ['settings', 'home', 'tasks', 'calendar', 'notes', 'journal'];
+
+/** Fetch every module chunk in the background, three at a time, so all modules open offline within seconds. */
 export function warmModules(): void {
-  const run = async () => {
-    for (const load of Object.values(LOADERS)) {
+  const queue = Object.entries(LOADERS)
+    .sort(([a], [b]) => (FIRST.includes(b) ? 1 : 0) - (FIRST.includes(a) ? 1 : 0) || FIRST.indexOf(a) - FIRST.indexOf(b))
+    .map(([, load]) => load);
+  let stopped = false;
+  const worker = async () => {
+    while (!stopped && queue.length) {
       try {
-        await load();
+        await queue.shift()!();
       } catch {
-        return; // offline or interrupted — try again on the next start
+        stopped = true; // offline or interrupted — try again on the next start
       }
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, 40));
     }
   };
-  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-  if (idle) idle(() => void run());
-  else setTimeout(() => void run(), 3000);
+  const run = () => void Promise.all([worker(), worker(), worker()]);
+  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+  if (idle) idle(run, { timeout: 2000 });
+  else setTimeout(run, 1500);
 }

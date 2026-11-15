@@ -101,15 +101,16 @@ export function useRecord(id: string | undefined | null): Rec | undefined {
 }
 
 /** A synced setting stored as its own record (`setting:<key>`). */
-export function useSetting<T>(key: string, fallback: T): [T, (value: T) => void, boolean] {
+export function useSetting<T>(key: string, fallback: T): [T, (value: T) => Promise<unknown>, boolean] {
   const { rec, loaded } = useRecordState(`setting:${key}`);
   const value = rec && !rec.deletedAt && rec.value !== undefined && rec.value !== null ? (rec.value as T) : fallback;
-  const set = useCallback((next: T) => void upsert('settings', `setting:${key}`, { value: next as unknown }), [key]);
+  // Returns the write, so a caller that must not lose it (finishing onboarding before a reload) can wait for it.
+  const set = useCallback((next: T) => upsert('settings', `setting:${key}`, { value: next as unknown }), [key]);
   return [value, set, !!loaded];
 }
 
 /** User preferences merged over defaults, plus a patch function. */
-export function usePrefs(): [Prefs, (patch: Partial<Prefs>) => void, boolean] {
+export function usePrefs(): [Prefs, (patch: Partial<Prefs>) => Promise<unknown>, boolean] {
   const [stored, setStored, loaded] = useSetting<Partial<Prefs>>('prefs', {});
   const prefs = useMemo<Prefs>(
     () => ({ ...DEFAULT_PREFS, ...stored, notify: { ...DEFAULT_PREFS.notify, ...stored.notify }, quiet: { ...DEFAULT_PREFS.quiet, ...stored.quiet }, focus: { ...DEFAULT_PREFS.focus, ...stored.focus }, workHours: { ...DEFAULT_PREFS.workHours, ...stored.workHours } }),
