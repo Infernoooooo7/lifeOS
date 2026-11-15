@@ -14,7 +14,7 @@ Everything in this report was executed; nothing is listed as passing that was no
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
-Total: **162** unit/integration tests and **79** end-to-end tests, all passing on the final run. Under full parallel
+Total: **166** unit/integration tests and **81** end-to-end tests, all passing on the final run. Under full parallel
 load a few end-to-end tests have failed once and passed on every re-run; where the cause was the test (racing
 app start-up or a save), the test was fixed, and one real start-up delay in the reminder engine was fixed.
 

@@ -132,6 +132,29 @@ test.describe('capture and search', () => {
     await expect(page.locator('.card', { hasText: 'Expenses' }).first()).toContainText('450');
   });
 
+  test('"Anything" capture works out what was typed and files it in the right module', async ({ page }) => {
+    await startLocal(page);
+    const openCapture = async () => page.getByRole('button', { name: isPhone(page) ? 'Quick capture' : 'Capture' }).first().click();
+    const sheet = page.getByRole('dialog', { name: 'Quick capture' });
+    await openCapture();
+    await expect(sheet.getByRole('radio', { name: 'Anything' })).toHaveAttribute('aria-checked', 'true');
+    await sheet.getByLabel('Anything', { exact: true }).fill('spent 1,250 on dinner at Toit');
+    await expect(sheet.getByLabel('Will be saved as')).toContainText('Expense');
+    await expect(sheet.getByLabel('Will be saved as')).toContainText('Dining');
+    await sheet.getByRole('button', { name: 'Save expense' }).click();
+    await expect(page.getByText('Expense saved')).toBeVisible();
+    await openCapture();
+    await sheet.getByLabel('Anything', { exact: true }).fill('lunch with Ravi tomorrow 1pm');
+    await expect(sheet.getByLabel('Will be saved as')).toContainText('Event');
+    await sheet.getByLabel('Anything', { exact: true }).press('Enter');
+    await expect(page.getByText('Event saved')).toBeVisible();
+    await page.goto('/app/finance');
+    await expect(page.locator('.card', { hasText: 'Expenses' }).first()).toContainText('1,250');
+    await page.goto('/app/calendar');
+    await page.getByRole('radio', { name: 'Agenda' }).click();
+    await expect(page.getByText('Lunch with Ravi').first()).toBeVisible();
+  });
+
   test('universal search finds records across modules and opens them', async ({ page }) => {
     await startLocal(page);
     await restoreSample(page);

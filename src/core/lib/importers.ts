@@ -204,8 +204,8 @@ export function importMarkdownNotes(files: { name: string; text: string }[]): Im
 
 const CATEGORY_HINTS: [RegExp, string][] = [
   [/grocer|supermarket|bigbasket|blinkit|zepto|dmart|reliance fresh|whole foods|tesco|walmart|kroger|aldi|lidl/i, 'Groceries'],
-  [/swiggy|zomato|restaurant|cafe|coffee|starbucks|domino|pizza|mcdonald|kfc|burger|bistro|diner/i, 'Dining'],
-  [/uber|ola\b|lyft|rapido|metro|railway|irctc|fuel|petrol|diesel|shell|parking|toll|bus\b|taxi/i, 'Transport'],
+  [/swiggy|zomato|restaurant|cafe|coffee|starbucks|domino|pizza|mcdonald|kfc|burger|bistro|diner|dinner|lunch|breakfast|brunch|snacks?\b/i, 'Dining'],
+  [/uber|ola\b|lyft|rapido|metro|railway|irctc|fuel|petrol|diesel|shell|parking|toll|bus\b|taxi|cab\b|auto\b|train ticket/i, 'Transport'],
   [/netflix|spotify|prime video|hotstar|youtube premium|apple\.com\/bill|icloud|subscription/i, 'Subscriptions'],
   [/\brent\b|landlord|housing society/i, 'Rent'],
   [/electric|water bill|gas bill|broadband|airtel|jio|vodafone|internet|utility/i, 'Utilities'],

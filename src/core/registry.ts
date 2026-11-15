@@ -472,6 +472,7 @@ export const MODULES: ModuleDef[] = [
       ['search-typos', 'Typo-tolerant search', 'Finds “metting” and “recieve”: one typo allowed from four letters, two from seven; exact and title matches rank first.'],
       ['palette', 'Command palette', 'Ctrl / ⌘ K to jump anywhere or run an action.'],
       ['capture', 'Quick capture', 'Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere.'],
+      ['capture-smart', 'Capture anything', 'Type one line — “spent 450 on dinner”, “lunch with Ravi tomorrow 1pm”, “remind me to call mom at 6pm” — and it is filed as the right kind of record, shown before you save. Rules on the device, no AI service.'],
       ['shortcuts', 'Keyboard shortcuts', 'Navigation and action shortcuts with an in-app cheat sheet.'],
       ['notifications', 'Notification center', 'Task, event, habit, renewal and date reminders in one inbox.'],
       ['browser-notifications', 'Browser notifications', 'System notifications while LIFEOS is open, asked for once and only when you opt in.'],

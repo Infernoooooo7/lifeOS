@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**325 capabilities in 26 modules** — 312 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**326 capabilities in 26 modules** — 313 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -40,7 +40,7 @@
 | Insights | System | 16 | 0 | 0 | 0 |
 | Spatial | System | 10 | 0 | 0 | 0 |
 | Marketplace | System | 7 | 0 | 0 | 0 |
-| Settings | System | 39 | 0 | 1 | 2 |
+| Settings | System | 40 | 0 | 1 | 2 |
 
 ## Home
 
@@ -517,6 +517,7 @@ _Make it yours._ Module id `settings` · always on
 | ✅ | Typo-tolerant search | Finds “metting” and “recieve”: one typo allowed from four letters, two from seven; exact and title matches rank first. | `platform.search-typos` |
 | ✅ | Command palette | Ctrl / ⌘ K to jump anywhere or run an action. | `platform.palette` |
 | ✅ | Quick capture | Capture a task, note, idea, reminder, expense, event, link, goal or journal entry from anywhere. | `platform.capture` |
+| ✅ | Capture anything | Type one line — “spent 450 on dinner”, “lunch with Ravi tomorrow 1pm”, “remind me to call mom at 6pm” — and it is filed as the right kind of record, shown before you save. Rules on the device, no AI service. | `platform.capture-smart` |
 | ✅ | Keyboard shortcuts | Navigation and action shortcuts with an in-app cheat sheet. | `platform.shortcuts` |
 | ✅ | Notification center | Task, event, habit, renewal and date reminders in one inbox. | `platform.notifications` |
 | ✅ | Browser notifications | System notifications while LIFEOS is open, asked for once and only when you opt in. | `platform.browser-notifications` |

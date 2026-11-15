@@ -11,7 +11,7 @@ sync. On the free hosting tier, the first visit after a quiet spell can take up 
 
 ## What is inside
 
-**325 capabilities in 26 modules — 312 implemented, 5 partial, 1 waiting on an integration, 7 planned.** Every
+**326 capabilities in 26 modules — 313 implemented, 5 partial, 1 waiting on an integration, 7 planned.** Every
 capability and its honest status is listed in [`docs/FEATURES.md`](docs/FEATURES.md) and in the in-app Marketplace,
 where each module can be switched on or off without losing data.
 
@@ -36,7 +36,7 @@ where each module can be switched on or off without losing data.
 | Insights | Reports and trends; a guided **weekly review** |
 | Spatial | Your data as a 3D space (WebGL, with a 2D fallback) |
 
-Around the modules: universal typo-tolerant search and command palette (Ctrl/⌘ K), quick capture from anywhere,
+Around the modules: universal typo-tolerant search and command palette (Ctrl/⌘ K), quick capture from anywhere that works out what you typed (an expense, an event, a reminder…),
 reminders and an inbox, workspaces, custom fields and categories, dark and light themes with a liquid-glass interface,
 full JSON backup and selective restore, and **imports from Todoist, Google Keep, Markdown (Notion, Obsidian, Bear) and
 bank statements (OFX, QFX, QIF)**.
@@ -80,8 +80,8 @@ Deployment (Render blueprint included; Vercel and plain Node hosts also work): [
 Every result below was produced by running it — see [`docs/TESTING.md`](docs/TESTING.md) for the full report,
 performance measurements and the defects that testing found.
 
-- 162 unit and API/sync tests against a real PostgreSQL database
-- 79 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
+- 166 unit and API/sync tests against a real PostgreSQL database
+- 81 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
   two-step sign-in, and WCAG 2.1 AA accessibility checks (axe) in both themes
 - Every module route checked for console errors and horizontal overflow at desktop, tablet and phone widths
 
