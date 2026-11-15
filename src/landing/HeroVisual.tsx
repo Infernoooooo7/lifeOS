@@ -73,6 +73,14 @@ export function HeroVisual({ modules }: { modules: HeroModule[] }) {
     return () => io.disconnect();
   }, [scene]);
 
+  // While the 3D hero is on screen the animated sky behind the page holds still: one GPU scene at a time.
+  useEffect(() => {
+    if (!scene || !ready || !active || scene.still) return;
+    const root = document.documentElement;
+    root.dataset.hero = 'on';
+    return () => void delete root.dataset.hero;
+  }, [scene, ready, active]);
+
   const ring = modules.slice(0, 12);
   return (
     <div ref={box} className="hero-visual relative mx-auto aspect-square w-full max-w-[600px]" aria-hidden="true">

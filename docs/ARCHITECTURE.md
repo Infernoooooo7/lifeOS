@@ -187,19 +187,29 @@ reference rows of the same user — cross-user access is impossible at the schem
   (particles, subdivision, noise octaves, pixel ratio), steps resolution and bloom down when the frame rate drops,
   stops rendering while scrolled out of view, and draws one still frame under `prefers-reduced-motion`.
 - **Astral sky** (`src/ui/Cosmos.tsx`): the dark theme is deep indigo space with cool lavender greys and indigo-tinted
-  glass. Behind every page runs a raw WebGL 2 sky (no three.js in the app shell), drawn in two passes:
-  - A domain-warped fbm nebula along a Milky Way band, tinted by the accent hue. It renders at about a third of the
-    resolution and refreshes every third frame.
-  - A screen pass that upsamples the nebula and adds three parallax layers of twinkling stars and the occasional
-    shooting star. The stars are baked once into a repeating 512² texture with each star's twinkle phase in alpha, so
-    a frame costs three texture samples; the meteor maths runs only while one flies.
-
-  The sky is capped at 24 fps and a pixel ratio of 1, and starts only when the browser is idle. It holds still while
-  anything scrolls and for 250 ms after, pauses in hidden tabs, and steps resolution down if frames keep arriving
-  late. It draws one still frame under reduced motion (the system setting or the app's own) and is switched per
-  device in Settings → Appearance. Software renderers (no GPU acceleration) get one still frame. A static CSS sky (nebula gradients and a star tile) is the fallback. The light theme
-  shows the same clouds as pastel tints on a pale dawn sky. Measured under software WebGL with 4× CPU throttling, the
-  settled idle frame goes from 16.7 to 20.1 ms and scrolling from 20.7 to 26.4 ms, with p95 33 ms against 50.
+  glass. Behind every page runs a raw WebGL 2 sky (no three.js in the app shell).
+  - **Nebula:** a domain-warped fbm along a Milky Way band, tinted by the accent hue. It is kept as keyframes at about
+    a third of the resolution, 1.2 s of sky time apart. The screen crossfades between two of them while the next is
+    drawn one horizontal strip per frame, so every frame costs about the same (no spikes).
+  - **Stars and meteors:** three parallax star layers come from a 512² tile baked once (twinkle phase in alpha), and
+    the occasional shooting star's maths runs only while one flies.
+  - **Never shows a cleared canvas:**
+    - the canvas is sized from a `100lvh` box, so a phone's address bar does not resize it;
+    - resizes are debounced and ignored unless the size really changed;
+    - every real resize is redrawn in the same task;
+    - it sits on its own compositor layer over a static sky on `<html>`.
+  - **Adapts once, never thrashes:** if the whole page keeps running below ~36 fps while the sky animates, it steps
+    down to 12 fps at half the pixel budget, then to a still frame. The level is kept for the browser session and
+    exposed as `data-level` on the canvas.
+  - **Other limits:**
+    - 24 fps cap, and a pixel budget of about 2.2 MP (1 MP on touch screens);
+    - starts when the browser is idle, and shaders compile in parallel;
+    - holds still while anything scrolls, pauses in hidden tabs, and holds still while the landing page's 3D hero is
+      on screen;
+    - one still frame under reduced motion and on software renderers (`localStorage['lifeos.cosmos'] = 'force'`
+      overrides that for testing; `scripts/dev/sky-probe.mjs` checks for black frames and thrash);
+    - switched off per device in Settings → Appearance; the light theme shows the clouds as pastel tints on a pale
+      dawn sky.
 - **Liquid-glass material:** translucent tinted surfaces with specular edge highlights over the sky (plus a faint
   grain) and a pointer-following sheen (`src/ui/GlassFx.tsx`, fine pointers only). The sidebar,
   top bar, context panel, phone tab bar and side sheets float as rounded glass panes. `prefers-reduced-transparency` and

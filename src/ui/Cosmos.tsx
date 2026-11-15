@@ -6,8 +6,9 @@ import { useEffect, useRef } from 'react';
  * The animated sky behind the whole app: a slowly evolving nebula along a Milky Way band, three parallax layers of
  * twinkling stars (the brightest with diffraction spikes) and the occasional shooting star. Raw WebGL 2 in two passes
  * so it stays cheap:
- *   1. the nebula (domain-warped fbm, the expensive part) renders into a small texture at ~⅓ resolution and is only
- *      refreshed about ten times a second — it moves too slowly for anyone to see the difference;
+ *   1. the nebula (domain-warped fbm, the expensive part) renders into small keyframe textures at ~⅓ resolution,
+ *      1.2 s of sky time apart; the screen crossfades between two while the next is drawn one strip per frame, so
+ *      every frame costs about the same;
  *   2. a screen pass upsamples it and adds the stars and meteors.
  * Stars are baked once into a repeating texture; each frame samples it three times. Capped at 24 fps, held still
  * while the page scrolls, paused in hidden tabs, one still frame under prefers-reduced-motion, and switched off with
@@ -118,7 +119,9 @@ void main() {
 
 const COMPOSITE = `#version 300 es
 precision highp float;
-uniform sampler2D uNebula;
+uniform sampler2D uNebulaA;
+uniform sampler2D uNebulaB;
+uniform float uMix;
 uniform sampler2D uStars;
 uniform vec2 uRes;
 uniform float uDpr;
@@ -136,7 +139,7 @@ vec3 layer(vec2 px, float scale, vec2 shift, float speed) {
 }
 void main() {
   vec2 uv = gl_FragCoord.xy / uRes;
-  vec3 col = texture(uNebula, uv).rgb;
+  vec3 col = mix(texture(uNebulaA, uv).rgb, texture(uNebulaB, uv).rgb, uMix);
   vec2 px = gl_FragCoord.xy / uDpr; // CSS pixels, so stars look the same on every screen
   vec3 s = layer(px, 1.7, uParallax * 6.0 + vec2(uTime * 0.6, 37.0), 1.0) * 0.55;
   s += layer(px, 1.0, uParallax * 14.0 + vec2(uTime * 1.3 + 300.0, uTime * 0.2 + 500.0), 1.3);
@@ -226,6 +229,28 @@ function mount(el: HTMLCanvasElement): (() => void) | undefined {
   };
 }
 
+/** How much the sky may do: 0 = full, 1 = 12 fps at lower resolution, 2 = one still frame. Kept for the browser session. */
+const LEVEL_KEY = 'lifeos.cosmos.level';
+const readLevel = () => {
+  try {
+    return Math.min(2, Number(sessionStorage.getItem(LEVEL_KEY)) || 0);
+  } catch {
+    return 0;
+  }
+};
+const saveLevel = (n: number) => {
+  try {
+    sessionStorage.setItem(LEVEL_KEY, String(n));
+  } catch {
+    /* private mode: the level applies until reload */
+  }
+};
+
+/** Seconds of sky time between two nebula keyframes; the screen crossfades between them. */
+const KEY_STEP = 1.2;
+/** Each new keyframe is drawn in this many horizontal strips, one per frame, so no frame does all the work. */
+const STRIPS = 12;
+
 /** Runs the sky once its programs are ready; returns the teardown. */
 function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebGLProgram, compProg: WebGLProgram, starProg: WebGLProgram): () => void {
   const root = document.documentElement;
@@ -236,27 +261,33 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-  const tex = gl.createTexture();
-  const fbo = gl.createFramebuffer();
+  // Every synchronous query comes before any GPU work is queued: a query issued behind queued work makes the page
+  // wait for that work to finish.
   const U = (p: WebGLProgram, n: string) => gl.getUniformLocation(p, n);
   const nu = { res: U(nebulaProg, 'uRes'), time: U(nebulaProg, 'uTime'), light: U(nebulaProg, 'uLight'), accent: U(nebulaProg, 'uAccent') };
-  const cu = { neb: U(compProg, 'uNebula'), stars: U(compProg, 'uStars'), res: U(compProg, 'uRes'), dpr: U(compProg, 'uDpr'), time: U(compProg, 'uTime'), par: U(compProg, 'uParallax'), light: U(compProg, 'uLight'), meteor: U(compProg, 'uMeteor'), meteorDir: U(compProg, 'uMeteorDir') };
+  const cu = { a: U(compProg, 'uNebulaA'), b: U(compProg, 'uNebulaB'), mix: U(compProg, 'uMix'), stars: U(compProg, 'uStars'), res: U(compProg, 'uRes'), dpr: U(compProg, 'uDpr'), time: U(compProg, 'uTime'), par: U(compProg, 'uParallax'), light: U(compProg, 'uLight'), meteor: U(compProg, 'uMeteor'), meteorDir: U(compProg, 'uMeteorDir') };
+  // A software renderer (no GPU acceleration) would spend the CPU on the sky every frame: draw it once instead.
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  // ('force' is a developer override that animates anyway — the way to test the sky on a slow GPU.)
+  let forced = false;
+  try {
+    forced = localStorage.getItem(COSMOS_KEY) === 'force';
+  } catch {
+    /* storage unavailable */
+  }
+  const software = !forced && /swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer);
   const rnd = (k: number, s: number) => {
     const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453;
     return x - Math.floor(x);
   };
 
-  // A software renderer (no GPU acceleration) would spend the CPU on the sky every frame: draw it once instead.
-  const info = gl.getExtension('WEBGL_debug_renderer_info');
-  const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-  const software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer);
-  // Bake the star tile once. Queued after every synchronous query above (uniform locations, renderer name): a
-  // query issued behind GPU work makes the page wait for that work to finish.
+  // Star tile, baked once.
   const starTex = gl.createTexture();
-  const starFbo = gl.createFramebuffer();
+  const fbo = gl.createFramebuffer();
   gl.bindTexture(gl.TEXTURE_2D, starTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, starFbo);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, starTex, 0);
   gl.viewport(0, 0, 512, 512);
   gl.useProgram(starProg);
@@ -267,66 +298,102 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.generateMipmap(gl.TEXTURE_2D);
+
+  // Three nebula keyframes: the screen shows a crossfade from `from` to `to` while `next` is drawn strip by strip.
+  let [from, to, next] = [gl.createTexture()!, gl.createTexture()!, gl.createTexture()!];
+  let toTime = 0; // sky time of the `to` keyframe; `from` is one step earlier, `next` one step later
+  let strip = 0; // strips of `next` drawn so far
+
   const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const still = { get matches() { return software || media.matches || root.dataset.motion === 'reduced'; } };
-  let dpr = 1; // the sky is soft by nature; full device resolution would only cost battery
-  let scale = 0.34; // nebula resolution relative to CSS pixels
-  let nw = 0, nh = 0, w = 0, h = 0;
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  let level = readLevel();
+  const holdStill = () => software || level >= 2 || media.matches || root.dataset.motion === 'reduced' || root.dataset.hero === 'on';
+  let cssW = 0, cssH = 0, dpr = 1, w = 0, h = 0, nw = 0, nh = 0;
   let light = root.dataset.theme === 'light' ? 1 : 0;
   let accent = accentRgb();
-  let raf = 0, last = 0, frame = 0, time = 40 + Math.random() * 400, slow = 0, scrolledAt = 0;
+  let raf = 0, last = 0, time = 40 + Math.random() * 400, scrolledAt = 0, prevTick = 0;
   const par = { x: 0, y: 0, tx: 0, ty: 0 };
   let enabled = cosmosEnabled();
+  const intervals: number[] = [];
+  let judgedAt = 0;
 
-  const resize = () => {
-    w = Math.max(1, Math.round(window.innerWidth * dpr));
-    h = Math.max(1, Math.round(window.innerHeight * dpr));
-    el.width = w;
-    el.height = h;
-    nw = Math.max(64, Math.round(window.innerWidth * scale));
-    nh = Math.max(64, Math.round(window.innerHeight * scale));
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, nw, nh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const nebula = (target: WebGLTexture, at: number, from = 0, rows = nh) => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    frame = 0; // the nebula must be redrawn at the new size
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
+    gl.viewport(0, 0, nw, nh);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(0, from, nw, rows);
+    gl.useProgram(nebulaProg);
+    gl.uniform2f(nu.res, nw, nh);
+    gl.uniform1f(nu.time, at);
+    gl.uniform1f(nu.light, light);
+    gl.uniform3f(nu.accent, ...accent);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disable(gl.SCISSOR_TEST);
   };
 
-  const draw = () => {
-    if (frame % 3 === 0) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-      gl.viewport(0, 0, nw, nh);
-      gl.useProgram(nebulaProg);
-      gl.uniform2f(nu.res, nw, nh);
-      gl.uniform1f(nu.time, time);
-      gl.uniform1f(nu.light, light);
-      gl.uniform3f(nu.accent, ...accent);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
+  /** Redraw both visible keyframes from scratch (start, resize, theme or accent change). */
+  const rebuild = () => {
+    toTime = time + KEY_STEP;
+    nebula(from, time);
+    nebula(to, toTime);
+    strip = 0;
+  };
+
+  /** Size the drawing buffer; returns true when it changed (which clears the canvas, so the caller redraws at once). */
+  const size = (): boolean => {
+    const r = el.getBoundingClientRect();
+    const cw = Math.max(1, Math.round(r.width));
+    const ch = Math.max(1, Math.round(r.height));
+    // Sharp on phones (up to 2× when the pixel budget allows), capped on very large monitors.
+    const budget = (coarse ? 1.0e6 : 2.2e6) / (level >= 1 ? 2 : 1);
+    const want = Math.max(0.5, Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(budget / (cw * ch))));
+    if (cw === cssW && ch === cssH && Math.abs(want - dpr) < 0.01 && w) return false;
+    cssW = cw;
+    cssH = ch;
+    dpr = want;
+    w = Math.round(cw * dpr);
+    h = Math.round(ch * dpr);
+    el.width = w;
+    el.height = h;
+    nw = Math.max(64, Math.round(cw * 0.34));
+    nh = Math.max(64, Math.round(ch * 0.34));
+    for (const t of [from, to, next]) {
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, nw, nh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
+    rebuild();
+    return true;
+  };
+
+  const composite = () => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, w, h);
     gl.useProgram(compProg);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.uniform1i(cu.neb, 0);
+    gl.bindTexture(gl.TEXTURE_2D, from);
+    gl.uniform1i(cu.a, 0);
     gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, to);
+    gl.uniform1i(cu.b, 1);
+    gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, starTex);
-    gl.uniform1i(cu.stars, 1);
+    gl.uniform1i(cu.stars, 2);
+    gl.uniform1f(cu.mix, Math.min(1, Math.max(0, 1 - (toTime - time) / KEY_STEP)));
     // A shooting star every few periods; its maths only runs in the shader while one is flying.
     const period = 7.5;
     const k = Math.floor(time / period);
     const lt = time - k * period;
-    if (rnd(k, 4.2) >= 0.4 && lt < 1.1 && !still.matches) {
-      const cw = w / dpr, ch = h / dpr;
+    if (rnd(k, 4.2) >= 0.4 && lt < 1.1 && !holdStill()) {
       const dx = -0.75 - rnd(k, 3) * 0.5, dy = -0.42;
       const len = Math.hypot(dx, dy);
       const prog = lt / 1.1;
-      const sx = (0.25 + rnd(k, 1) * 0.9) * cw, sy = (0.55 + rnd(k, 2) * 0.4) * ch;
-      gl.uniform4f(cu.meteor, sx + (dx / len) * prog * ch * 0.75, sy + (dy / len) * prog * ch * 0.75, prog, 1);
+      const sx = (0.25 + rnd(k, 1) * 0.9) * cssW, sy = (0.55 + rnd(k, 2) * 0.4) * cssH;
+      gl.uniform4f(cu.meteor, sx + (dx / len) * prog * cssH * 0.75, sy + (dy / len) * prog * cssH * 0.75, prog, 1);
       gl.uniform2f(cu.meteorDir, dx / len, dy / len);
     } else gl.uniform4f(cu.meteor, 0, 0, 0, 0);
     gl.uniform2f(cu.res, w, h);
@@ -335,30 +402,61 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
     gl.uniform2f(cu.par, par.x, par.y);
     gl.uniform1f(cu.light, light);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    frame++;
+  };
+
+  /** One animation step: advance the keyframes by a strip, roll them over when due, and draw the screen. */
+  const step = () => {
+    if (time >= toTime) {
+      // Due: finish any strips a slow frame left undrawn, then roll the keyframes forward.
+      if (strip < STRIPS) nebula(next, toTime + KEY_STEP, Math.floor((strip / STRIPS) * nh), nh);
+      [from, to, next] = [to, next, from];
+      toTime += KEY_STEP;
+      strip = 0;
+      if (time >= toTime) rebuild(); // fell far behind (e.g. a long pause): start over from now
+    } else if (strip < STRIPS) {
+      const y0 = Math.floor((strip / STRIPS) * nh);
+      const y1 = Math.floor(((strip + 1) / STRIPS) * nh);
+      nebula(next, toTime + KEY_STEP, y0, y1 - y0);
+      strip++;
+    }
+    composite();
+  };
+
+  /** If the whole page keeps running slowly while the sky animates, step down once and stay there. */
+  const judge = (now: number) => {
+    if (now - judgedAt < 2500 || intervals.length < 30) return;
+    judgedAt = now;
+    const sorted = [...intervals].sort((a, b) => a - b);
+    intervals.length = 0;
+    if (sorted[Math.floor(sorted.length / 2)] <= 28) return; // page at ~36 fps or better: fine
+    level = Math.min(2, level + 1);
+    saveLevel(level);
+    el.dataset.level = String(level);
+    if (size()) composite(); // level 1 also halves the pixel budget; redraw at once, never leave a cleared canvas
+    if (level >= 2) start();
   };
 
   const loop = (now: number) => {
     raf = requestAnimationFrame(loop);
+    const gap = now - prevTick;
+    prevTick = now;
+    if (gap > 0 && gap < 250) {
+      intervals.push(gap);
+      if (intervals.length > 120) intervals.shift();
+    }
     const dt = now - last;
-    if (dt < 40) return; // ~24 fps is plenty for a drifting sky
+    if (dt < (level >= 1 ? 80 : 40)) return; // 24 fps, or 12 when stepped down: plenty for a drifting sky
     if (now - scrolledAt < 250) {
       last = now; // hold still while the page scrolls: scrolling gets the whole frame budget
+      intervals.length = 0;
       return;
     }
     last = now;
-    // If frames keep arriving late, the device is struggling: lower the nebula resolution once, then the pixel ratio.
-    slow = dt > 70 ? slow + 1 : Math.max(0, slow - 1);
-    if (slow > 40) {
-      slow = 0;
-      if (scale > 0.22) scale = 0.22;
-      else if (dpr > 0.75) dpr = 0.75;
-      resize();
-    }
     time += Math.min(dt, 100) / 1000;
     par.x += (par.tx - par.x) * 0.05;
     par.y += (par.ty - par.y) * 0.05;
-    draw();
+    step();
+    judge(now);
   };
 
   const start = () => {
@@ -368,10 +466,13 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
       return;
     }
     root.classList.add('cosmos');
-    if (still.matches) {
-      frame = 0;
-      draw();
-    } else if (!document.hidden) raf = requestAnimationFrame(loop);
+    if (size()) composite();
+    if (holdStill()) composite();
+    else if (!document.hidden) {
+      last = prevTick = performance.now();
+      intervals.length = 0;
+      raf = requestAnimationFrame(loop);
+    }
   };
 
   const onPointer = (e: PointerEvent) => {
@@ -379,30 +480,41 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
     par.ty = (e.clientY / window.innerHeight - 0.5) * -2;
   };
   const onScroll = () => void (scrolledAt = performance.now());
+  let resizeTimer = 0;
   const onResize = () => {
-    resize();
-    if (still.matches) start();
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      if (enabled && size()) composite(); // redrawn in the same task: the cleared canvas is never shown
+    }, 120);
   };
   const onToggle = () => {
     enabled = cosmosEnabled();
+    if (enabled) {
+      level = 0; // switched back on by hand: give it a fresh chance
+      saveLevel(0);
+    }
     start();
   };
   const themeWatch = new MutationObserver(() => {
-    light = root.dataset.theme === 'light' ? 1 : 0;
-    accent = accentRgb();
-    frame = 0;
-    if (still.matches) start();
+    const nextLight = root.dataset.theme === 'light' ? 1 : 0;
+    const nextAccent = accentRgb();
+    if (nextLight === light && nextAccent.every((v, i) => Math.abs(v - accent[i]) < 1e-3)) return;
+    light = nextLight;
+    accent = nextAccent;
+    if (!w) return;
+    rebuild();
+    composite();
   });
   themeWatch.observe(root, { attributes: true, attributeFilter: ['data-theme', 'style'] });
-  const motionWatch = new MutationObserver(start);
-  motionWatch.observe(root, { attributes: true, attributeFilter: ['data-motion'] });
+  const modeWatch = new MutationObserver(start);
+  modeWatch.observe(root, { attributes: true, attributeFilter: ['data-motion', 'data-hero'] });
   const onLost = (e: Event) => {
     e.preventDefault();
     cancelAnimationFrame(raf);
     root.classList.remove('cosmos');
   };
 
-  resize();
+  el.dataset.level = String(level); // visible to tests and to anyone inspecting the page
   start();
   window.addEventListener('resize', onResize);
   window.addEventListener('pointermove', onPointer, { passive: true });
@@ -415,8 +527,9 @@ function run(el: HTMLCanvasElement, gl: WebGL2RenderingContext, nebulaProg: WebG
   el.addEventListener('webglcontextlost', onLost);
   return () => {
     cancelAnimationFrame(raf);
+    window.clearTimeout(resizeTimer);
     themeWatch.disconnect();
-    motionWatch.disconnect();
+    modeWatch.disconnect();
     window.removeEventListener('resize', onResize);
     window.removeEventListener('pointermove', onPointer);
     window.removeEventListener('scroll', onScroll, { capture: true });
