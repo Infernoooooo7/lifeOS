@@ -6,11 +6,11 @@ Everything in this report was executed; nothing is listed as passing that was no
 
 | Suite | Tool | What it covers | Result |
 | --- | --- | --- | --- |
-| Unit | Vitest | Pure logic in `src/core` and `src/server` (merge, recurrence, planner, people, meals, importers, search, TOTP, finance…) | **128 passed** |
+| Unit | Vitest | Pure logic in `src/core` and `src/server` (merge, recurrence, planner, people, meals, importers, search, TOTP, finance, smart capture, journal-lock crypto…) | **140 passed** |
 | API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices, two-step verification, housekeeping, query budget | **34 passed** |
-| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser, including accessibility | **48 passed** |
-| End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **31 passed** |
-| Accessibility | axe-core (WCAG 2.1 A/AA) in Playwright | 15 main screens with data, dark and light; full 34-screen audit on desktop and phone with `scripts/dev/a11y.mjs` | **0 violations** |
+| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser, including accessibility | **50 passed** |
+| End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **32 passed** |
+| Accessibility | axe-core (WCAG 2.1 A/AA) in Playwright | 16 main screens with data, dark and light; full 34-screen audit on desktop and phone with `scripts/dev/a11y.mjs` | **0 violations** |
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
