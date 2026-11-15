@@ -2,19 +2,21 @@
 
 Everything in this report was executed; nothing is listed as passing that was not run.
 
-## Results (14 November 2026, after the performance and UI pass)
+## Results (15 November 2026)
 
 | Suite | Tool | What it covers | Result |
 | --- | --- | --- | --- |
-| Unit | Vitest | Pure logic in `src/core` | **65 passed** |
-| API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices, housekeeping, query budget | **35 passed** |
-| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser | **33 passed** (whole e2e run: 2.2 min, was 4.1) |
-| End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **19 passed** |
+| Unit | Vitest | Pure logic in `src/core` and `src/server` (merge, recurrence, planner, people, meals, importers, search, TOTP, finance…) | **128 passed** |
+| API + sync integration | Vitest against PostgreSQL 16 | HTTP API, sync engine, two simulated devices, two-step verification, housekeeping, query budget | **34 passed** |
+| End-to-end, desktop (1366×820) | Playwright, Chromium, production build | Whole product through the browser, including accessibility | **48 passed** |
+| End-to-end, phone (Pixel 7 profile, touch) | Playwright, Chromium, production build | Workflows and layout | **31 passed** |
 | Accessibility | axe-core (WCAG 2.1 A/AA) in Playwright | 15 main screens with data, dark and light; full 34-screen audit on desktop and phone with `scripts/dev/a11y.mjs` | **0 violations** |
 | Type check | `tsc --noEmit` (strict) | Whole repository including tests | clean |
 | Production build | `next build` | — | succeeds |
 
-Total: **100** unit/integration tests and **52** end-to-end tests, all passing on the final run.
+Total: **162** unit/integration tests and **79** end-to-end tests, all passing on the final run. Under full parallel
+load a few end-to-end tests have failed once and passed on every re-run; where the cause was the test (racing
+app start-up or a save), the test was fixed, and one real start-up delay in the reminder engine was fixed.
 
 ## Performance (`scripts/dev/perf.mjs`, `scripts/dev/inp.mjs`; Chromium, CPU throttled 4×, sample data)
 

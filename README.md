@@ -11,7 +11,7 @@ sync. On the free hosting tier, the first visit after a quiet spell can take up 
 
 ## What is inside
 
-**312 capabilities in 25 modules — 299 implemented, 5 partial, 1 waiting on an integration, 7 planned.** Every
+**325 capabilities in 26 modules — 312 implemented, 5 partial, 1 waiting on an integration, 7 planned.** Every
 capability and its honest status is listed in [`docs/FEATURES.md`](docs/FEATURES.md) and in the in-app Marketplace,
 where each module can be switched on or off without losing data.
 
@@ -80,8 +80,9 @@ Deployment (Render blueprint included; Vercel and plain Node hosts also work): [
 Every result below was produced by running it — see [`docs/TESTING.md`](docs/TESTING.md) for the full report,
 performance measurements and the defects that testing found.
 
-- 127 unit and API/sync tests against a real PostgreSQL database
-- 62 end-to-end tests across desktop and phone, including offline use and two devices editing the same data
+- 162 unit and API/sync tests against a real PostgreSQL database
+- 79 end-to-end tests across desktop and phone, including offline use, two devices editing the same data,
+  two-step sign-in, and WCAG 2.1 AA accessibility checks (axe) in both themes
 - Every module route checked for console errors and horizontal overflow at desktop, tablet and phone widths
 
 ## Documentation
