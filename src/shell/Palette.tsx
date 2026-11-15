@@ -27,7 +27,7 @@ const OWNER: Record<string, string> = {
   assignments: 'learning', exams: 'learning', readings: 'learning', studySessions: 'learning', questions: 'learning', workouts: 'health', exercises: 'health', workoutPlans: 'health',
   bodyLogs: 'health', sleepLogs: 'health', meals: 'health', cardio: 'health', journal: 'journal', distractions: 'focus', shoppingLists: 'shopping', shoppingItems: 'shopping',
   wishlist: 'shopping', purchases: 'shopping', inventory: 'shopping', trips: 'travel', itinerary: 'travel', reservations: 'travel', places: 'travel', files: 'files', media: 'entertainment',
-  bookmarks: 'digital', apps: 'digital', devices: 'digital', licenses: 'digital', digitalAccounts: 'digital', dates: 'admin', contacts: 'admin', people: 'people', interactions: 'people', maintenance: 'admin',
+  bookmarks: 'digital', apps: 'digital', devices: 'digital', licenses: 'digital', digitalAccounts: 'digital', dates: 'admin', contacts: 'admin', people: 'people', interactions: 'people', recipes: 'meals', mealPlans: 'meals', maintenance: 'admin',
   checklists: 'utilities', countdowns: 'utilities', automations: 'automation',
 };
 export const ownerModule = (collection: string): string | undefined => OWNER[collection];
@@ -38,6 +38,7 @@ export function openHit(rec: { id: string; _c: string }) {
   else if (rec._c === 'projects') navigate(`/projects/${rec.id}`);
   else if (rec._c === 'trips') navigate(`/travel/${rec.id}`);
   else if (rec._c === 'people') navigate(`/people/${rec.id}`);
+  else if (rec._c === 'recipes') navigate(`/meals/${rec.id}`);
   else if (rec._c === 'automations') navigate('/automation');
   else if (collectionDef(rec._c).system) navigate(`/${OWNER[rec._c] ?? ''}`);
   else openEditor(rec._c, rec.id);

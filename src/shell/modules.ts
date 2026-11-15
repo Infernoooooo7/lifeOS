@@ -27,6 +27,7 @@ export const LOADERS: Record<string, Loader> = {
   digital: () => import('@/modules/lifestyle').then((m) => ({ default: m.Digital })),
   admin: () => import('@/modules/lifestyle').then((m) => ({ default: m.Admin })),
   people: () => import('@/modules/people'),
+  meals: () => import('@/modules/meals'),
   utilities: () => import('@/modules/utilities'),
   automation: () => import('@/modules/automation'),
   insights: () => import('@/modules/insights'),

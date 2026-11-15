@@ -6,7 +6,7 @@ import {
   LayoutGrid, Lightbulb, Link2, List, ListChecks, Lock, LogOut, Mail, Map, MapPin, Maximize2, Menu, Minus, Monitor, Moon, MoreHorizontal, Music, Network,
   NotebookPen, Orbit, Package, Palette, PanelRight, Pause, PenLine, Pencil, PiggyBank, Pin, Plane, Play, Plus, Puzzle, RefreshCw, Repeat, RotateCcw, Save,
   Search, Settings, Share2, Shield, ShoppingCart, SlidersHorizontal, Smartphone, Smile, Sparkles, Square, Star, StickyNote, Store, Sun, Table2, Tag, Target,
-  Timer, Trash2, TrendingUp, TriangleAlert, Trophy, Upload, User, Users, Wallet, Wand2, Wifi, WifiOff, Workflow, Wrench, X, Zap, type LucideIcon,
+  ChefHat, Timer, Trash2, TrendingUp, TriangleAlert, Trophy, Upload, User, Users, UtensilsCrossed, Wallet, Wand2, Wifi, WifiOff, Workflow, Wrench, X, Zap, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -27,7 +27,7 @@ export const ICONS = {
   piggy: PiggyBank, pinned: Pin, plane: Plane, play: Play, plus: Plus, puzzle: Puzzle, refresh: RefreshCw, repeat: Repeat, undo: RotateCcw, save: Save,
   search: Search, settings: Settings, share: Share2, shield: Shield, cart: ShoppingCart, sliders: SlidersHorizontal, phone: Smartphone, smile: Smile,
   sparkles: Sparkles, square: Square, star: Star, sticky: StickyNote, store: Store, sun: Sun, table: Table2, tag: Tag, target: Target, timer: Timer,
-  trash: Trash2, trending: TrendingUp, warning: TriangleAlert, trophy: Trophy, upload: Upload, user: User, users: Users, wallet: Wallet, wand: Wand2,
+  trash: Trash2, trending: TrendingUp, meals: UtensilsCrossed, chef: ChefHat, warning: TriangleAlert, trophy: Trophy, upload: Upload, user: User, users: Users, wallet: Wallet, wand: Wand2,
   wifi: Wifi, wifiOff: WifiOff, workflow: Workflow, wrench: Wrench, x: X, zap: Zap,
 } satisfies Record<string, LucideIcon>;
 

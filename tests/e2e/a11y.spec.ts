@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { restoreSample, startLocal } from './helpers';
 
 /** WCAG 2.1 A/AA checks with axe-core on the main screens, with realistic data, in both themes. */
-const ROUTES = ['', 'tasks', 'tasks/board', 'calendar', 'projects/p-web', 'notes/n-1', 'habits', 'finance', 'journal', 'people', 'people/pe-asha', 'digital', 'insights/review', 'marketplace', 'settings/data'];
+const ROUTES = ['', 'tasks', 'tasks/board', 'calendar', 'projects/p-web', 'notes/n-1', 'habits', 'finance', 'journal', 'people', 'people/pe-asha', 'meals', 'meals/rc-dal', 'digital', 'insights/review', 'marketplace', 'settings/data'];
 
 async function audit(page: Page) {
   const failures: string[] = [];

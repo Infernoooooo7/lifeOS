@@ -336,6 +336,17 @@ export const MODULES: ModuleDef[] = [
     ]),
   },
   {
+    id: 'meals', name: 'Meals', tagline: 'Plan the week, shop once', icon: 'meals', hue: 30, category: 'Lifestyle', interests: ['Home', 'Health'],
+    features: feats('meals', [
+      ['recipes', 'Recipe box', 'Recipes with servings, time, tags, ingredients, method, source and rating; card, list and table views.'],
+      ['plan', 'Weekly meal plan', 'Breakfast, lunch, dinner and snacks for each day of the week; recipes or anything else (“eating out”).'],
+      ['scale', 'Scale to servings', 'Ingredient amounts adjust to the servings you plan or choose on the recipe page, with friendly fractions.'],
+      ['shopping', 'Shopping list from the plan', 'One tap turns the week’s planned recipes into a shopping list: amounts scaled, duplicates merged (200 g + 1 kg rice = 1.2 kg), sorted by aisle.', 'implemented', undefined, ['shopping']],
+      ['regenerate', 'Safe regeneration', 'Generating the week’s list again updates the same items instead of adding duplicates, and never un-ticks what you bought.'],
+      ['import', 'Import recipes from CSV', 'Bring recipes in from a spreadsheet with column mapping.'],
+    ]),
+  },
+  {
     id: 'people', name: 'People', tagline: 'Stay close to the people who matter', icon: 'users', hue: 350, category: 'Lifestyle', interests: ['Relationships'],
     features: feats('people', [
       ['directory', 'People directory', 'Everyone you care about, grouped by circle (family, close friends, work…) with list, card and table views.'],

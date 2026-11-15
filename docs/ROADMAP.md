@@ -50,6 +50,6 @@ The registry is designed for 500+ capabilities; these are the next steps in roug
 - Authorised webhooks through a server-side, allow-listed relay.
 
 **Module ideas that fit the registry without architectural change**
-Recipes and meal planning · medication and symptom log · pet care · plant care · vehicle log · reading highlights ·
+Medication and symptom log · pet care · plant care · vehicle log · reading highlights ·
 gift planner · chores rota · home energy log · career log and CV builder ·
 investment tracker · tax document checklist · language-learning vocabulary · music practice log · packing templates.

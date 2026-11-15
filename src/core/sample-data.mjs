@@ -102,6 +102,16 @@ export function sampleBackup(now = new Date()) {
   add('interactions', 'in-2', { personId: 'pe-mom', kind: 'call', date: d(-2), summary: 'Sunday call' });
   add('interactions', 'in-3', { personId: 'pe-ravi', kind: 'message', date: d(-29), summary: 'Congratulated him on the launch' });
   add('interactions', 'in-4', { personId: 'pe-mom', kind: 'call', date: d(-9), summary: 'Planned the Diwali visit' });
+  add('recipes', 'rc-dal', { name: 'Dal tadka', servings: 4, totalMin: 40, tags: ['vegetarian', 'weeknight'], rating: 5, ingredients: '250 g toor dal\n2 tomatoes\n1 onion\n3 cloves garlic\n1 tsp cumin seeds\n2 tbsp ghee\nsalt to taste', steps: '1. Pressure-cook the dal with turmeric.\n2. Temper cumin, garlic and onion in ghee; add tomatoes.\n3. Stir into the dal and simmer for 5 minutes.' });
+  add('recipes', 'rc-pasta', { name: 'Tomato basil pasta', servings: 2, totalMin: 25, tags: ['quick'], rating: 4, ingredients: '200 g spaghetti\n400 g canned tomatoes\n2 cloves garlic\n1 bunch basil\n2 tbsp olive oil\n30 g parmesan' });
+  add('recipes', 'rc-oats', { name: 'Overnight oats', servings: 1, totalMin: 5, tags: ['breakfast'], ingredients: '50 g rolled oats\n150 ml milk\n1 banana\n1 tsp honey' });
+  const monday = (() => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; })();
+  const wd = (i) => ymd(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
+  add('mealPlans', 'mp-1', { date: wd(0), slot: 'dinner', recipeId: 'rc-dal', servings: 4 });
+  add('mealPlans', 'mp-2', { date: wd(2), slot: 'dinner', recipeId: 'rc-pasta', servings: 2 });
+  add('mealPlans', 'mp-3', { date: wd(3), slot: 'dinner', recipeId: 'rc-dal', servings: 2 });
+  add('mealPlans', 'mp-4', { date: wd(1), slot: 'breakfast', recipeId: 'rc-oats' });
+  add('mealPlans', 'mp-5', { date: wd(4), slot: 'dinner', title: 'Eating out' });
   add('contacts', 'ct-1', { name: 'Dr. Mehta', relation: 'doctor', emergency: true, phone: '+91 98765 43210' });
   add('maintenance', 'mt-1', { name: 'Car service', kind: 'vehicle', asset: 'Honda City', intervalDays: 180, nextDue: d(12) });
   add('checklists', 'cl-1', { title: 'Travel essentials', items: [{ id: 'a', text: 'Passport', done: false }, { id: 'b', text: 'Charger', done: true }] });

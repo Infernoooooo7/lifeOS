@@ -30,6 +30,7 @@ where each module can be switched on or off without losing data.
 | Journal | Daily pages, moods, prompts, reflections |
 | Focus | Pomodoro and deep-work timers, distraction log |
 | People | Keep-in-touch rhythms, reconnect queue, birthdays, interaction history |
+| Meals | Recipe box, weekly meal plan, servings scaling, one-tap merged shopping list |
 | Shopping, Travel, Documents, Entertainment, Digital life, Life admin | The rest of life's lists, dates and paperwork |
 | Automation | “When this, then that” rules across modules |
 | Insights | Reports and trends; a guided **weekly review** |

@@ -2,7 +2,7 @@
 
 > Generated from `src/core/registry.ts` by `npm run docs:features`. Do not edit by hand.
 
-**317 capabilities in 25 modules** — 304 implemented, 5 partial, 1 integration-dependent, 7 planned.
+**323 capabilities in 26 modules** — 310 implemented, 5 partial, 1 integration-dependent, 7 planned.
 
 | Status | Meaning |
 | --- | --- |
@@ -32,6 +32,7 @@
 | Documents | Lifestyle | 6 | 1 | 0 | 1 |
 | Entertainment | Lifestyle | 6 | 1 | 0 | 0 |
 | Digital life | Lifestyle | 8 | 0 | 0 | 0 |
+| Meals | Lifestyle | 6 | 0 | 0 | 0 |
 | People | Lifestyle | 11 | 0 | 0 | 0 |
 | Life admin | Lifestyle | 10 | 0 | 0 | 0 |
 | Utilities | Lifestyle | 10 | 0 | 0 | 0 |
@@ -359,6 +360,19 @@ _Your accounts, apps and devices._ Module id `digital`
 | ✅ | Software notes | How-tos and settings notes per application. | `digital.notes` |
 | ✅ | Digital cleanup | Guided cleanup checklists you can run again and again. | `digital.cleanup` |
 | ✅ | Account organisation | An index of your online accounts with password-manager links. Passwords are never stored. | `digital.accounts` |
+
+## Meals
+
+_Plan the week, shop once._ Module id `meals`
+
+| | Capability | Description | Id |
+| --- | --- | --- | --- |
+| ✅ | Recipe box | Recipes with servings, time, tags, ingredients, method, source and rating; card, list and table views. | `meals.recipes` |
+| ✅ | Weekly meal plan | Breakfast, lunch, dinner and snacks for each day of the week; recipes or anything else (“eating out”). | `meals.plan` |
+| ✅ | Scale to servings | Ingredient amounts adjust to the servings you plan or choose on the recipe page, with friendly fractions. | `meals.scale` |
+| ✅ | Shopping list from the plan | One tap turns the week’s planned recipes into a shopping list: amounts scaled, duplicates merged (200 g + 1 kg rice = 1.2 kg), sorted by aisle. | `meals.shopping` |
+| ✅ | Safe regeneration | Generating the week’s list again updates the same items instead of adding duplicates, and never un-ticks what you bought. | `meals.regenerate` |
+| ✅ | Import recipes from CSV | Bring recipes in from a spreadsheet with column mapping. | `meals.import` |
 
 ## People
 

@@ -1,4 +1,5 @@
 import { CURRENCIES } from './lib/money';
+import { MEAL_SLOTS } from './lib/meals';
 import { CADENCES, INTERACTION_KINDS } from './lib/people';
 import { PRIORITIES, TASK_STATUSES } from './lib/tasks';
 
@@ -339,6 +340,30 @@ const defs: CollectionDef[] = [
   {
     id: 'maintenance', label: 'Maintenance', one: 'Maintenance item', icon: 'wrench', title: 'name', views: ['list', 'table', 'calendar'], date: 'nextDue', sort: { k: 'nextDue', dir: 'asc' },
     fields: [text('name', 'Job', { req: true, ph: 'e.g. Car service' }), select('kind', 'Type', ['vehicle', 'household', 'other'], { def: 'vehicle', list: true, half: true }), text('asset', 'Vehicle / appliance', { list: true, half: true }), date('lastDone', 'Last done', { half: true }), num('intervalDays', 'Repeat every', { unit: 'days', half: true, min: 0 }), date('nextDue', 'Next due', { list: true, half: true }), money('cost', 'Typical cost', { half: true, min: 0 }), notes()],
+  },
+  // ── Meals ────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'recipes', label: 'Recipes', one: 'Recipe', icon: 'chef', title: 'name', views: ['gallery', 'list', 'table'], sort: { k: 'name', dir: 'asc' }, archive: true,
+    fields: [
+      text('name', 'Recipe', { req: true }),
+      num('servings', 'Serves', { def: 2, min: 1, half: true, list: true }),
+      num('totalMin', 'Ready in', { unit: 'min', min: 0, half: true, list: true }),
+      tags('tags', 'Tags', { list: true }),
+      area('ingredients', 'Ingredients', { help: 'One per line, amount first: “200 g rice”, “1½ cups flour”, “salt to taste”.' }),
+      md('steps', 'Method'),
+      url('sourceUrl', 'Source'),
+      { k: 'rating', label: 'Rating', t: 'rating', half: true },
+    ],
+  },
+  {
+    id: 'mealPlans', label: 'Meal plan', one: 'Planned meal', icon: 'meals', title: 'title', views: ['list', 'calendar', 'table'], date: 'date', sort: { k: 'date', dir: 'asc' },
+    fields: [
+      date('date', 'Day', { req: true, def: '@today', list: true, half: true }),
+      select('slot', 'Meal', MEAL_SLOTS.map((m) => m), { def: 'dinner', list: true, half: true }),
+      rel('recipeId', 'Recipe', 'recipes', { list: true }),
+      text('title', 'Or something else', { ph: 'e.g. Eating out, Leftovers' }),
+      num('servings', 'Servings', { min: 1, half: true, help: 'Leave empty to use the recipe’s own number.' }),
+    ],
   },
   // ── People ───────────────────────────────────────────────────────────────────────────────────────
   {

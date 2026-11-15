@@ -170,10 +170,13 @@ test.describe('calendar, habits, notes, finance', () => {
     await startLocal(page);
     await restoreSample(page);
     await page.goto('/app/habits');
-    await expect(page.getByText('0/3').first()).toBeVisible();
+    // How many habits count as done depends on the weekday, so read the starting point first.
+    await expect(page.getByRole('button', { name: 'Check in Meditate' })).toBeVisible();
+    const ring = page.getByRole('img', { name: /^\d+ of [1-9]\d* habits done$/ });
+    const [, done, total] = /^(\d+) of (\d+)/.exec((await ring.getAttribute('aria-label'))!)!.map(Number);
     await page.getByRole('button', { name: 'Check in Meditate' }).click();
     await expect(page.getByRole('button', { name: 'Check in Meditate' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByText('1/3').first()).toBeVisible();
+    await expect(page.getByRole('img', { name: `${done + 1} of ${total} habits done` })).toBeVisible();
     await page.getByRole('button', { name: 'Show details' }).first().click();
     await expect(page.getByText('Current streak')).toBeVisible();
     await expect(page.getByText('Habit calendar')).toBeVisible();
@@ -439,5 +442,42 @@ test.describe('example week', () => {
     await page.goto('/app/tasks');
     await expect(page.locator('#main-scroll').getByRole('button', { name: /^My real task/ })).toBeVisible();
     await expect(page.locator('#main-scroll').getByRole('button', { name: /^Write homepage copy/ })).toHaveCount(0);
+  });
+});
+
+test.describe('meals', () => {
+  test('the week plan turns into one merged shopping list, and regenerating does not duplicate', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/meals');
+    await expect(page.getByRole('region', { name: /^Mon / }).getByText('Dal tadka')).toBeVisible();
+    await page.getByRole('button', { name: 'Shopping list' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Shopping list from the plan' });
+    // Dal twice (4 + 2 servings of a 4-serving recipe = 1.5×): 375 g toor dal; garlic from dal and pasta merged.
+    await expect(sheet.getByText('375 g toor dal')).toBeVisible();
+    await expect(sheet.getByText('6½ cloves garlic')).toBeVisible();
+    await sheet.getByRole('checkbox', { name: 'Buy salt' }).uncheck();
+    await sheet.getByRole('button', { name: /^Add \d+ items?$/ }).click();
+    await expect(page.getByText(/^Added \d+ items? to your shopping list/)).toBeVisible();
+    await page.goto('/app/shopping');
+    await expect(page.locator('#main-scroll').getByText('toor dal').first()).toBeVisible();
+    const count = await page.locator('#main-scroll').getByText('toor dal').count();
+    await page.goto('/app/meals');
+    await page.getByRole('button', { name: 'Shopping list' }).click();
+    await page.getByRole('dialog', { name: 'Shopping list from the plan' }).getByRole('button', { name: /^Add \d+ items?$/ }).click();
+    await page.goto('/app/shopping');
+    await expect(page.locator('#main-scroll').getByText('toor dal')).toHaveCount(count);
+  });
+
+  test('a recipe scales to servings and can be planned', async ({ page }) => {
+    await startLocal(page);
+    await restoreSample(page);
+    await page.goto('/app/meals/rc-pasta');
+    await expect(page.getByText('200 g spaghetti')).toBeVisible();
+    await page.getByRole('button', { name: 'More servings' }).click();
+    await expect(page.getByText('300 g spaghetti')).toBeVisible();
+    await page.getByRole('button', { name: 'Plan it' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Plan', exact: true }).click();
+    await expect(page.getByText(/^Planned for dinner/)).toBeVisible();
   });
 });

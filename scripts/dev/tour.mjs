@@ -6,7 +6,7 @@ import { sampleBackup } from '../../src/core/sample-data.mjs';
 
 const [, , out = '/tmp/tour', mode = 'desktop', ...only] = process.argv;
 const base = process.env.BASE_URL ?? 'http://localhost:3100';
-const routes = only.length ? only : ['/app', '/app/people', '/app/people/pe-asha', '/app/tasks', '/app/tasks/board', '/app/tasks/timeline', '/app/calendar', '/app/projects', '/app/projects/p-web', '/app/notes/n-1', '/app/notes/graph', '/app/habits', '/app/goals', '/app/goals/okrs', '/app/finance', '/app/finance/budgets', '/app/learning', '/app/health', '/app/journal', '/app/focus', '/app/shopping', '/app/travel/trip-1', '/app/files/expiring', '/app/entertainment', '/app/digital', '/app/admin', '/app/utilities', '/app/automation', '/app/insights', '/app/marketplace', '/app/settings/appearance', '/app/settings/data', '/app/spatial'];
+const routes = only.length ? only : ['/app', '/app/people', '/app/people/pe-asha', '/app/meals', '/app/meals/rc-dal', '/app/tasks', '/app/tasks/board', '/app/tasks/timeline', '/app/calendar', '/app/projects', '/app/projects/p-web', '/app/notes/n-1', '/app/notes/graph', '/app/habits', '/app/goals', '/app/goals/okrs', '/app/finance', '/app/finance/budgets', '/app/learning', '/app/health', '/app/journal', '/app/focus', '/app/shopping', '/app/travel/trip-1', '/app/files/expiring', '/app/entertainment', '/app/digital', '/app/admin', '/app/utilities', '/app/automation', '/app/insights', '/app/marketplace', '/app/settings/appearance', '/app/settings/data', '/app/spatial'];
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const contexts = {
